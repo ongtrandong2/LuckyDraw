@@ -1,0 +1,72 @@
+cache:
+  key: nuget
+  paths:
+    - /home/gitlab-runner/.nuget/packages/
+
+stages:
+  - deploy
+
+deploy:
+  stage: deploy
+
+  variables:
+    DOTNET_VERSION: "8.0"
+    DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+    DOTNET_NOLOGO: "true"
+    BUILD_ENV: "Release"
+    FRAMEWORK: "net8.0"
+    NUGET_PACKAGES: "/home/gitlab-runner/.nuget/packages/"
+    DOTNET_RESTORE_TIMEOUT: "120"
+
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+
+  #before_script:
+  #- sudo apt-get update
+  #- sudo apt-get install -y rsync
+  #- apt --fix-broken install -y
+  #- sudo apt remove icu-devtools libicu-dev -y
+  #- sudo apt update
+  #- wget http://archive.ubuntu.com/ubuntu/pool/main/i/icu/icu-devtools_70.1-2ubuntu1_amd64.deb
+  #- wget http://archive.ubuntu.com/ubuntu/pool/main/i/icu/libicu-dev_70.1-2ubuntu1_amd64.deb
+  #- sudo dpkg -i libicu-dev_70.1-2ubuntu1_amd64.deb icu-devtools_70.1-2ubuntu1_amd64.deb
+  #- sudo apt-get -y install -f
+  #- sudo dpkg --configure -a
+  #- apt-cache policy libicu
+  #- sudo apt install -y dotnet-sdk-8.0
+  #- apt-get update
+  #- apt-get install -y wget
+  #- wget https://dot.net/v1/dotnet-install.sh
+  #- chmod +x ./dotnet-install.sh
+  #- ./dotnet-install.sh -c 8.0
+  #- export PATH=$PATH:$HOME/.dotnet
+
+  script:
+    # - cd $CI_PROJECT_DIR
+    # - npm install --legacy-peer-deps
+    # - npm run build
+    - dotnet workload install wasm-tools
+    - dotnet restore
+    #- dotnet publish PGAdmin.csproj -c Release -o bin/publish
+    - dotnet publish -c Release -o bin/publish
+    #Prepare for ssh connection to nginx server
+    - apt-get update && apt-get install -y openssh-client rsync
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" > id_rsa
+    - chmod 600 id_rsa
+    - ssh-add id_rsa
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -p 234 10.10.0.4 >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+
+    #Copy published to nginx server
+    #- rsync -av -e "ssh -p 234" --exclude='appsettings.json' --exclude='appsettings.Development.json' bin/publish/ root@10.10.0.4:/mnt/project_builds/www/minapp_pg_dev
+    - rsync -av -e "ssh -p 234" --exclude='appsettings.json' --exclude='appsettings.Development.json' bin/publish/ root@10.10.0.4:/mnt/project_builds/www/minapp_pg_dev
+
+    #Stop and start .net service on nginx server:
+    - ssh -p 234 root@10.10.0.4 "systemctl stop miniapp_pg_dev.service"
+    - ssh -p 234 root@10.10.0.4 "systemctl start miniapp_pg_dev.service"
+
+  only:
+    - main

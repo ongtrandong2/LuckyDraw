@@ -1,0 +1,242 @@
+﻿@page "/pgs/create"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models
+@using PGAdmin.Models.Location
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageHeader PageTitle="Quản lý PG"
+            Breadcrumbs="GetBreadcrumbs()"/>
+
+<PageTitle>Thêm mới PG</PageTitle>
+
+<h4 class="text-primary my-4">Thông tin PG</h4>
+<EditForm method="post" Model="PG" OnValidSubmit="AddPG" FormName="create" Enhance>
+    <DataAnnotationsValidator/>
+    <ValidationSummary role="alert"/>
+    <div class="container row px-0">
+        <div class="col col-12 mb-3">
+            <label for="fileupload" class="load-files-label">
+                <div class="product-img position-relative hover-bg-grey rounded-3" role="button">
+                    <img class="img-fluid"
+                         src="@(!string.IsNullOrEmpty(PG.AvatarUrl) ? PG.AvatarUrl : "/images/default-avatar.png")"/>
+                    @if (!string.IsNullOrEmpty(PG.AvatarUrl))
+                    {
+                        <div class="image-upload-hover"></div>
+                    }
+                </div>
+            </label>
+            <InputFile id="fileupload" hidden OnChange="HandleFileUpload"/>
+        </div>
+
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="firstName" class="form-label">Họ</label>
+            <InputText id="firstName" @bind-Value="PG.FirstName" class="form-control"/>
+            <ValidationMessage For="() => PG.FirstName" class="text-danger"/>
+        </div>
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="lastName" class="form-label">Tên</label>
+            <InputText id="lastName" @bind-Value="PG.LastName" class="form-control"/>
+            <ValidationMessage For="() => PG.LastName" class="text-danger"/>
+        </div>
+
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="phone" class="form-label">Số điện thoại</label>
+            <InputText id="phone" @bind-Value="PG.Phone" class="form-control"/>
+            <ValidationMessage For="() => PG.Phone" class="text-danger"/>
+        </div>
+
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="email" class="form-label">Email</label>
+            <InputText id="email" @bind-Value="PG.Email" class="form-control"/>
+            <ValidationMessage For="() => PG.Email" class="text-danger"/>
+        </div>
+
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="dateofbirth" class="form-label">Ngày sinh</label>
+            <InputDate id="dateofbirth" @bind-Value="PG.DateOfBirth" class="form-control"/>
+            <ValidationMessage For="() => PG.DateOfBirth" class="text-danger"/>
+        </div>
+
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="gender" class="form-label">Giới tính</label>
+            <InputText id="gender" @bind-Value="PG.Gender" class="form-control"/>
+            <ValidationMessage For="() => PG.Gender" class="text-danger"/>
+        </div>
+
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="height" class="form-label">Chiều cao</label>
+            <InputNumber id="height" @bind-Value="PG.Height" class="form-control"/>
+            <ValidationMessage For="() => PG.Height" class="text-danger"/>
+        </div>
+
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="weight" class="form-label">Cân nặng</label>
+            <InputNumber id="weight" @bind-Value="PG.Weight" class="form-control"/>
+            <ValidationMessage For="() => PG.Weight" class="text-danger"/>
+        </div>
+
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="status" class="form-label">Status:</label>
+            <InputNumber id="status" @bind-Value="PG.Status" class="form-control"/>
+            <ValidationMessage For="() => PG.Status" class="text-danger"/>
+        </div>
+
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="zaloid" class="form-label">ZaloId:</label>
+            <InputText id="zaloid" @bind-Value="PG.ZaloId" class="form-control"/>
+            <ValidationMessage For="() => PG.ZaloId" class="text-danger"/>
+        </div>
+
+        <div class="col col-12 mb-3">
+            <label for="address" class="form-label">Địa chỉ</label>
+            <InputText id="address" @bind-Value="PG.AddressText" class="form-control"/>
+            <ValidationMessage For="() => PG.AddressText" class="text-danger"/>
+        </div>
+
+        <div class="col col-12 col-md-4 mb-3">
+            <label for="province">Tỉnh/Thành phố</label>
+            <InputSelect id="province" class="form-control form-select" @bind-Value="_selectedProvince"
+            @oninput="LoadDistricts">
+                <option value="">-- Select a Category --</option>
+                @foreach (var province in _provinces)
+                {
+                    <option value="@province.Code">@province.Name</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="() => PG.ProvinceCode" class="text-danger"/>
+        </div>
+
+        <div class="col col-12 col-md-4 mb-3">
+            <label for="districtCode">Quận/Huyện</label>
+            <InputSelect id="district" class="form-control form-select" @bind-Value="_selectedDistrict"
+            @oninput="LoadWards">
+                <option value="">-- Select a District --</option>
+                @if (_districts != null)
+                {
+                    @foreach (var district in _districts)
+                    {
+                        <option value="@district.Code">@district.Name</option>
+                    }
+                }
+            </InputSelect>
+        </div>
+
+        <div class="col col-12 col-md-4 mb-3">
+            <label for="wardCode">Phường/Xã</label>
+            <InputSelect id="wardCode" @bind-Value="_selectedWard" class="form-control form-select"
+            @oninput="e => _selectedWard = e.Value.ToString()">
+                <option value="">-- Select a Ward --</option>
+                @if (_wards != null)
+                {
+                    @foreach (var ward in _wards)
+                    {
+                        <option value="@ward.Code">@ward.Name</option>
+                    }
+                }
+            </InputSelect>
+        </div>
+
+        <div class="col col-8"></div>
+        <div class="col col-4 text-end mb-4 mt-2">
+            <button class="btn btn-light bg-white border border-black border-opacity-25 mx-2 px-5 py-2">
+                <a href="/pgs" class="text-decoration-none text-black">Hủy bỏ</a>
+            </button>
+            <button type="submit" class="btn btn-primary ms-2 px-5 py-2">Lưu</button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm] 
+    private PG PG { get; set; } = new();
+
+    private List<Province> _provinces = new();
+    private List<District> _districts = new();
+    private List<Ward> _wards = new();
+
+    private string _selectedProvince = "";
+    private string _selectedDistrict = "";
+    private string _selectedWard = "";
+
+    private string filePath;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        _provinces = context.Provinces.ToList();
+    }
+
+    private List<PageHeader.BreadcrumbItem> GetBreadcrumbs()
+    {
+        return new List<PageHeader.BreadcrumbItem>
+        {
+            new() { Name = "Danh sách PG", Url = "/pgs" },
+            new() { Name = "Thêm mới PG", Url = "/pgs/create" }
+        };
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        var uploadPath = Path.Combine("wwwroot", "uploads", "avatars");
+
+        if (!Directory.Exists(uploadPath))
+        {
+            Directory.CreateDirectory(uploadPath);
+        }
+
+        var uniqueFileName = $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
+        filePath = Path.Combine(uploadPath, uniqueFileName);
+
+        using var stream = new FileStream(filePath, FileMode.Create);
+        await file.OpenReadStream().CopyToAsync(stream);
+
+        filePath = filePath.Replace("wwwroot", "").Replace("\\", "/");
+        PG.AvatarUrl = filePath;
+
+        StateHasChanged();
+    }
+
+    private async Task AddPG()
+    {
+        using var context = DbFactory.CreateDbContext();
+        PG.ProvinceCode = _selectedProvince;
+        PG.DistrictCode = _selectedDistrict;
+        PG.WardCode = _selectedWard;
+        PG.QrCode = PG.ZaloId;
+
+        if (PG.DateOfBirth.HasValue && PG.DateOfBirth.Value.Kind == DateTimeKind.Unspecified)
+        {
+            PG.DateOfBirth = DateTime.SpecifyKind(PG.DateOfBirth.Value, DateTimeKind.Utc);
+        }
+
+        context.PG.Add(PG);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/pgs");
+    }
+
+    private async Task LoadDistricts(ChangeEventArgs e)
+    {
+        var selectedProvinceCode = (string)e.Value;
+        PG.ProvinceCode = selectedProvinceCode;
+        using var context = DbFactory.CreateDbContext();
+        _districts = await context.Districts.Where(d => d.ProvinceCode == selectedProvinceCode).ToListAsync();
+        _wards = [];
+        _selectedDistrict = null;
+        _selectedWard = null;
+        StateHasChanged();
+    }
+
+    private async Task LoadWards(ChangeEventArgs e)
+    {
+        var selectedDistrictCode = (string)e.Value;
+        using var context = DbFactory.CreateDbContext();
+        _wards = await context.Wards.Where(w => w.DistrictCode == selectedDistrictCode).ToListAsync();
+        StateHasChanged();
+    }
+}

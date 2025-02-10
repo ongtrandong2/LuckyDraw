@@ -1,0 +1,110 @@
+﻿@page "/products/create"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageHeader PageTitle="Quản lý sản phẩm"
+            Breadcrumbs="GetBreadcrumbs()"/>
+
+<PageTitle>Thêm mới sản phẩm</PageTitle>
+
+<h4 class="text-primary my-4">Thêm mới sản phẩm</h4>
+<EditForm method="post" Model="Product" OnValidSubmit="AddProduct" FormName="create" Enhance>
+    <DataAnnotationsValidator/>
+    <ValidationSummary role="alert"/>
+    <div class="container row px-0">
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="name" class="form-label">Tên sản phẩm</label>
+            <InputText id="name" @bind-Value="Product.Name" class="form-control"/>
+            <ValidationMessage For="() => Product.Name" class="text-danger"/>
+        </div>
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="code" class="form-label">Mã sản phẩm</label>
+            <InputText id="code" @bind-Value="Product.Code" class="form-control"/>
+            <ValidationMessage For="() => Product.Code" class="text-danger"/>
+        </div>
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="typeId" class="form-label">Loại</label>
+            <InputSelect id="typeId" @bind-Value="_selectedTypeId" class="form-control form-select">
+                <option value="">-- Select a type --</option>
+                @if (_types != null)
+                {
+                    @foreach (var t in _types)
+                    {
+                        <option value="@t.Id">@t.Name</option>
+                    }
+                }
+            </InputSelect>
+            <ValidationMessage For="() => Product.TypeId" class="text-danger"/>
+        </div>
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="category" class="form-label">Danh mục</label>
+            <InputSelect id="category" @bind-Value="_selectedCatId" class="form-control form-select">
+                <option value="">-- Select a category --</option>
+                @if (_categories != null)
+                {
+                    @foreach (var t in _categories)
+                    {
+                        <option value="@t.Id">@t.Name</option>
+                    }
+                }
+            </InputSelect>
+            <ValidationMessage For="() => Product.CategoryId" class="text-danger"/>
+        </div>
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="unitPrice" class="form-label">Đơn giá</label>
+            <InputNumber id="unitPrice" @bind-Value="Product.UnitPrice" class="form-control"/>
+            <ValidationMessage For="() => Product.UnitPrice" class="text-danger"/>
+        </div>
+        <div class="col col-12 col-md-6 mb-3"/>
+        <div class="col col-8"></div>
+        <div class="col col-4 text-end mb-4 mt-2">
+            <button class="btn btn-light bg-white border border-black border-opacity-25 mx-2 px-5 py-2">
+                <a href="/products" class="text-decoration-none text-black">Hủy bỏ</a>
+            </button>
+            <button type="submit" class="btn btn-primary ms-2 px-5 py-2">Lưu</button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm]
+    private Product Product { get; set; } = new();
+
+    private List<ProductCategory> _categories = new();
+    private List<ProductType> _types = new();
+
+    private int _selectedTypeId;
+    private int _selectedCatId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        _categories = context.ProductCategories.ToList();
+        _types = context.ProductTypes.ToList();
+    }
+
+    private async Task AddProduct()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Product.CategoryId = _selectedCatId;
+        Product.TypeId = _selectedTypeId;
+        context.Products.Add(Product);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/products");
+    }
+
+    private List<PageHeader.BreadcrumbItem> GetBreadcrumbs()
+    {
+        return new List<PageHeader.BreadcrumbItem>
+        {
+            new() { Name = "Danh sách sản phẩm", Url = "/products" },
+            new() { Name = "Thêm mới sản phẩm", Url = "/products/create" }
+        };
+    }
+}

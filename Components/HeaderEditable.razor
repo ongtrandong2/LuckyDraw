@@ -1,0 +1,28 @@
+﻿<!-- Editable Header using Bootstrap styles -->
+<div class="editable-header mx-3 d-flex flex-row align-items-center mt-3 hover-text-secondary">
+    @if (_isEdit) {
+        <input type="text"
+               class="form-control w-50"
+               @bind="Title"
+               @onblur="OnHeaderBlur"
+               aria-label="Editable header" />
+    } else {
+        <h6 class="me-2 mb-0" role="button">@Title</h6>
+        <div class="flex-fill text-secondary" role="button" @onclick="e => _isEdit = true">
+            <svg width="24" height="24" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16.6715 9.39404C16.6715 9.39404 16.7535 10.7879 17.9834 12.0177C19.2132 13.2475 20.607 13.3295 20.607 13.3295M10.0479 21.6593L8.3418 19.9532" stroke="#17A049" stroke-width="1.5" />
+                <path d="M17.3265 8.7384L16.6705 9.39432L10.6404 15.4244C10.232 15.8329 10.0278 16.037 9.85212 16.2623C9.64494 16.5278 9.46732 16.8152 9.3224 17.1193C9.19954 17.3771 9.10821 17.6511 8.92556 18.1991L8.34076 19.9535L7.96236 21.0887C7.87247 21.3584 7.94265 21.6556 8.14365 21.8567C8.34464 22.0577 8.64195 22.1278 8.91161 22.038L10.0468 21.6596L11.8012 21.0747C12.3492 20.8921 12.6232 20.8008 12.881 20.6779C13.1851 20.533 13.4725 20.3553 13.738 20.1482C13.9633 19.9725 14.1675 19.7683 14.5759 19.3599L20.6059 13.3298L21.2619 12.6739C22.3486 11.5871 22.3486 9.82516 21.2619 8.7384C20.1752 7.65165 18.4132 7.65165 17.3265 8.7384Z" stroke="#17A049" stroke-width="1.5" />
+            </svg>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    private bool _isEdit = false;
+
+    private void OnHeaderBlur()
+    {
+        _isEdit = false;
+    }
+}

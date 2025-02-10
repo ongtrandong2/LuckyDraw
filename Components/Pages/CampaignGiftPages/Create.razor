@@ -1,0 +1,113 @@
+﻿@page "/campaigngifts/create"
+@page "/campaigngifts/create/{CampaignId:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models.Campaign
+@using PGAdmin.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageHeader PageTitle="Quản lý quà tặng"
+            Breadcrumbs="GetBreadcrumbs()"/>
+
+<PageTitle>Thêm quà tặng</PageTitle>
+
+<h4 class="text-primary my-4">Thêm quà tặng</h4>
+<EditForm method="post" Model="CampaignGift" OnValidSubmit="AddCampaignGift" FormName="create" Enhance>
+    <DataAnnotationsValidator/>
+    <ValidationSummary role="alert"/>
+    <div class="container row px-0">
+        <input type="hidden" name="CampaignGift.Name" value="@CampaignGift.Name"/>
+        <input type="hidden" name="CampaignGift.ImageUrl" value="@CampaignGift.ImageUrl"/>
+        <input type="hidden" name="CampaignGift.CampaignId" value="@CampaignGift.CampaignId"/>
+        
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="giftId" class="form-label">Quà tặng</label>
+            <InputSelect id="giftId" @bind-Value="_selectedGiftId" class="form-control form-select"
+                         @oninput="OnGiftSelected">
+                <option value="">-- Chọn quà tặng --</option>
+                @if (_gifts != null)
+                {
+                    @foreach (var gift in _gifts)
+                    {
+                        <option value="@gift.Id">@gift.Name</option>
+                    }
+                }
+            </InputSelect>
+        </div>
+        
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="quantity" class="form-label">Số lượng</label>
+            <InputNumber id="quantity" @bind-Value="CampaignGift.Quantity" class="form-control"/>
+            <ValidationMessage For="() => CampaignGift.Quantity" class="text-danger"/>
+        </div>
+        <div class="col col-12 col-md-6 mb-3">
+            <label for="remainingquantity" class="form-label">Số lượng còn lại</label>
+            <InputNumber id="remainingquantity" @bind-Value="CampaignGift.RemainingQuantity" class="form-control"/>
+            <ValidationMessage For="() => CampaignGift.RemainingQuantity" class="text-danger"/>
+        </div>
+        <div class="col col-8"></div>
+        <div class="col col-4 text-end mb-4 mt-2">
+            <button class="btn btn-light bg-white border border-black border-opacity-25 mx-2 px-5 py-2">
+                <a href="/campaigns/@CampaignGift.CampaignId/gifts" class="text-decoration-none text-black">Hủy bỏ</a>
+            </button>
+            <button type="submit" class="btn btn-primary ms-2 px-5 py-2">Lưu</button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter]
+    public int? CampaignId { get; set; }
+    
+    [SupplyParameterFromForm]
+    private CampaignGift CampaignGift { get; set; } = new();
+
+    private List<Gift> _gifts = new();
+    private int _selectedGiftId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        _gifts = await context.Gift.ToListAsync();
+        
+        // Set CampaignId if it exists in the URL
+        if (CampaignId.HasValue)
+        {
+            CampaignGift.CampaignId = CampaignId.Value;
+        }
+    }
+
+    private async Task AddCampaignGift()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.CampaignGifts.Add(CampaignGift);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo($"/campaigns/{CampaignGift.CampaignId}/gifts");
+    }
+
+    private void OnGiftSelected(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int giftId))
+        {
+            var selectedGift = _gifts.FirstOrDefault(g => g.Id == giftId);
+            if (selectedGift != null)
+            {
+                CampaignGift.Name = selectedGift.Name;
+                CampaignGift.ImageUrl = selectedGift.ImageUrl;
+            }
+        }
+    }
+
+    private List<PageHeader.BreadcrumbItem> GetBreadcrumbs()
+    {
+        return new List<PageHeader.BreadcrumbItem>
+        {
+            new() { Name = "Danh sách quà tặng", Url = $"/campaigns/{CampaignId}/gifts" },
+            new() { Name = "Thêm quà tặng", Url = $"/campaigngifts/create?campaignId={CampaignId}" }
+        };
+    }
+}

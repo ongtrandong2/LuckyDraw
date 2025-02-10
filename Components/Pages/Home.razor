@@ -1,0 +1,20 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Authorization
+@inject NavigationManager Navigation
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Loading</PageTitle>
+
+@code {
+    private bool _redirected = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_redirected)
+        {
+            _redirected = true; // Prevent multiple redirects
+            Navigation.NavigateTo("/pgs", forceLoad: true); // Force reload if needed
+        }
+    }
+}

@@ -1,0 +1,59 @@
+﻿@page "/campaigngifts/details"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models.Campaign
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+
+<PageTitle>Details</PageTitle>
+
+<h1>Details</h1>
+
+<div>
+    <h2>CampaignGift</h2>
+    <hr/>
+    @if (campaigngift is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <dl class="row">
+            <dt class="col-sm-2">Name</dt>
+            <dd class="col-sm-10">@campaigngift.Name</dd>
+            <dt class="col-sm-2">ImageUrl</dt>
+            <dd class="col-sm-10">@campaigngift.ImageUrl</dd>
+            <dt class="col-sm-2">Quantity</dt>
+            <dd class="col-sm-10">@campaigngift.Quantity</dd>
+            <dt class="col-sm-2">RemainingQuantity</dt>
+            <dd class="col-sm-10">@campaigngift.RemainingQuantity</dd>
+            <dt class="col-sm-2">RowVersion</dt>
+            <dt class="col-sm-2">CampaignId</dt>
+            <dd class="col-sm-10">@campaigngift.CampaignId</dd>
+        </dl>
+        <div>
+            <a href="@($"/campaigngifts/edit?id={campaigngift.Id}")">Edit</a> |
+            <a href="@("/campaigngifts")">Back to List</a>
+        </div>
+    }
+</div>
+
+@code {
+    private CampaignGift? campaigngift;
+
+    [SupplyParameterFromQuery] private int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        campaigngift = await context.CampaignGifts.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (campaigngift is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+}

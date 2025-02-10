@@ -1,0 +1,136 @@
+﻿@page "/gifts/create"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageHeader PageTitle="Danh mục phần thưởng"
+            Breadcrumbs="GetBreadcrumbs()"/>
+
+<PageTitle>Thêm mới phần thưởng</PageTitle>
+
+<h4 class="text-primary my-4">Thêm mới phần thưởng</h4>
+<EditForm method="post" Model="Gift" OnValidSubmit="AddGift" FormName="create" Enhance>
+    <DataAnnotationsValidator/>
+    <ValidationSummary role="alert"/>
+    <div class="container row px-0">
+        <div class="col col-12 mb-3">
+            <label for="fileupload"
+                   class="load-files-label">
+                <div class="product-img position-relative hover-bg-grey" role="button">
+                    <img class="img-fluid" src="@(string.IsNullOrEmpty(Gift.ImageUrl) ? "./images/default-avatar.png" : Gift.ImageUrl)" />
+                    <div class="image-upload-hover"></div>
+                </div>
+            </label>
+            <InputFile id="fileupload" hidden OnChange="HandleFileUpload"/>
+        </div>
+        <div class="col col-12 col-md-10 mb-3">
+            <label for="name" class="form-label">Tên phần thưởng</label>
+            <InputText id="name" @bind-Value="Gift.Name" class="form-control"/>
+            <ValidationMessage For="() => Gift.Name" class="text-danger"/>
+        </div>
+        <div class="col col-2 mb-3">
+            <label for="status" class="form-label text-primary">Trạng thái</label>
+            <div class="form-check form-switch">
+                <label class="form-check-label" for="status-pg-@(Gift.Id)">Hoạt động</label>
+                @if (GiftStatus == 1)
+                {
+                    <input class="form-check-input"
+                    @onchange="e => GiftStatus = (bool)e.Value ? 1 : 0"
+                    type="checkbox"
+                    role="switch"
+                    checked
+                    id="status-campaign-@(Gift.Id)" />
+                }
+                else
+                {
+                    <input class="form-check-input"
+                    @onchange="e => GiftStatus = (bool)e.Value ? 1 : 0"
+                    type="checkbox"
+                    role="switch"
+                    id="status-campaign-@(Gift.Id)" />
+                }
+            </div>
+            <ValidationMessage For="() => Gift.Status" class="text-danger" />
+        </div>
+        <div class="col col-12 col-md-6 mb-3 d-none">
+            <label for="imageurl" class="form-label">ImageUrl:</label>
+            <InputText type="hidden" id="imageurl" @bind-Value="Gift.ImageUrl" class="form-control"/>
+            <ValidationMessage For="() => Gift.ImageUrl" class="text-danger"/>
+        </div>
+        <div class="col col-8"></div>
+        <div class="col col-4 text-end mb-4 mt-2">
+            <button class="btn btn-light bg-white border border-black border-opacity-25 mx-2 px-5 py-2">
+                <a href="/gifts" class="text-decoration-none text-black">Hủy bỏ</a>
+            </button>
+            <button type="submit" class="btn btn-primary ms-2 px-5 py-2">Lưu</button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm]
+    private Gift Gift { get; set; } = new();
+
+    private int GiftStatus { get; set; }
+
+    private string filePath;
+
+    protected override async Task OnInitializedAsync()
+    {
+        GiftStatus = 1;
+        Gift.Status = 1;
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        // Set the folder to save uploaded files
+        var uploadPath = Path.Combine("wwwroot", "uploads", "gifts");
+
+        // Ensure the folder exists
+        if (!Directory.Exists(uploadPath))
+        {
+            Directory.CreateDirectory(uploadPath);
+        }
+
+        // Generate a UUID for the file name
+        var uniqueFileName = $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
+
+        // Combine the path and unique file name
+        filePath = Path.Combine(uploadPath, uniqueFileName);
+
+        // Save the file to the server
+        using var stream = new FileStream(filePath, FileMode.Create);
+        await file.OpenReadStream().CopyToAsync(stream);
+
+        // Optionally, trim the "wwwroot" part for easier use in the front-end
+        filePath = filePath.Replace("wwwroot", "").Replace("\\", "/");
+        Gift.ImageUrl = filePath;
+
+        StateHasChanged(); // Refresh the UI
+    }
+
+    private List<PageHeader.BreadcrumbItem> GetBreadcrumbs()
+    {
+        return new List<PageHeader.BreadcrumbItem>
+        {
+            new() { Name = "Danh sách phần thưởng", Url = "/gifts" },
+            new() { Name = "Thêm mới phần thưởng" }
+        };
+    }
+
+    private async Task AddGift()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Gift.Status = GiftStatus;
+        context.Gift.Add(Gift);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/gifts");
+    }
+}

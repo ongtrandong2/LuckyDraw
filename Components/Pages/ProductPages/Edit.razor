@@ -1,0 +1,158 @@
+﻿@page "/products/edit"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageHeader PageTitle="Quản lý PG"
+            Breadcrumbs="GetBreadcrumbs()"/>
+
+<PageTitle>Chỉnh sửa PG</PageTitle>
+
+@if (Product is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h4 class="text-primary my-4">Chỉnh sửa sản phẩm</h4>
+    <EditForm method="post" Model="Product" OnValidSubmit="UpdateProduct" FormName="edit" Enhance>
+        <DataAnnotationsValidator/>
+        <ValidationSummary role="alert"/>
+        <div class="container row px-0">
+            <input type="hidden" name="Product.Id" value="@Product.Id"/>
+            <div class="col col-12 col-md-6 mb-3">
+                <label for="name" class="form-label">Tên sản phẩm</label>
+                <InputText id="name" @bind-Value="Product.Name" class="form-control"/>
+                <ValidationMessage For="() => Product.Name" class="text-danger"/>
+            </div>
+            <div class="col col-12 col-md-6 mb-3">
+                <label for="code" class="form-label">Mã sản phẩm</label>
+                <InputText id="code" @bind-Value="Product.Code" class="form-control"/>
+                <ValidationMessage For="() => Product.Code" class="text-danger"/>
+            </div>
+            <div class="col col-12 col-md-6 mb-3">
+                <label for="typeId" class="form-label">Loại</label>
+                <InputSelect id="typeId" @bind-Value="_selectedTypeId" class="form-control form-select"
+                             @oninput="e => _selectedTypeId = int.Parse(e.Value.ToString())">
+                    <option value="">-- Select a type --</option>
+                    @if (_types != null)
+                    {
+                        @foreach (var t in _types)
+                        {
+                            <option value="@t.Id">@t.Name</option>
+                        }
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => Product.TypeId" class="text-danger"/>
+            </div>
+            <div class="col col-12 col-md-6 mb-3">
+                <label for="category" class="form-label">Danh mục</label>
+                <InputSelect id="category" @bind-Value="_selectedCatId" class="form-control form-select"
+                             @oninput="e => _selectedCatId = int.Parse(e.Value.ToString())">
+                    <option value="">-- Select a category --</option>
+                    @if (_categories != null)
+                    {
+                        @foreach (var t in _categories)
+                        {
+                            <option value="@t.Id">@t.Name</option>
+                        }
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => Product.CategoryId" class="text-danger"/>
+            </div>
+            <div class="col col-12 col-md-6 mb-3">
+                <label for="unitPrice" class="form-label">Đơn giá</label>
+                <InputNumber id="unitPrice" @bind-Value="Product.UnitPrice" class="form-control"/>
+                <ValidationMessage For="() => Product.UnitPrice" class="text-danger"/>
+            </div>
+            <div class="col col-12 col-md-6 mb-3"/>
+            <div class="col col-8"></div>
+            <div class="col col-4 text-end mb-4 mt-2">
+                <button class="btn btn-light bg-white border border-black border-opacity-25 mx-2 px-5 py-2">
+                    <a href="/products" class="text-decoration-none text-black">Hủy bỏ</a>
+                </button>
+                <button type="submit" class="btn btn-primary ms-2 px-5 py-2">Lưu</button>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [SupplyParameterFromQuery] private int Id { get; set; }
+
+    [SupplyParameterFromForm] 
+    private Product? Product { get; set; }
+
+    private List<ProductCategory> _categories = new();
+    private List<ProductType> _types = new();
+
+    private int _selectedTypeId;
+    private int _selectedCatId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Product ??= await context.Products.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (Product is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+        else
+        {
+            _selectedCatId = Product.CategoryId;
+            _selectedTypeId = Product.TypeId;
+            _categories = context.ProductCategories.ToList();
+            _types = context.ProductTypes.ToList();
+        }
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task UpdateProduct()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Product!).State = EntityState.Modified;
+        Product.CategoryId = _selectedCatId;
+        Product.TypeId = _selectedTypeId;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ProductExists(Product!.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/products");
+    }
+
+    private List<PageHeader.BreadcrumbItem> GetBreadcrumbs()
+    {
+        return new List<PageHeader.BreadcrumbItem>
+        {
+            new() { Name = "Danh sách sản phẩm", Url = "/products" },
+            new() { Name = "Chỉnh sửa sản phẩm", Url = "/products/edit?id=" + Id }
+        };
+    }
+
+    private bool ProductExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Products.Any(e => e.Id == id);
+    }
+
+}

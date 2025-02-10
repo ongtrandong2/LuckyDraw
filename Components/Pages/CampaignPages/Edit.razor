@@ -1,0 +1,483 @@
+﻿@page "/campaigns/edit"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models
+@using PGAdmin.Models.Campaign
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageHeader PageTitle="Quản lý chiến dịch"
+            Breadcrumbs="GetBreadcrumbs()"/>
+
+<PageTitle>Chỉnh sửa chiến dịch</PageTitle>
+
+@if (Campaign is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h4 class="text-primary my-4">Chỉnh sửa chiến dịch</h4>
+    <EditForm method="post" Model="Campaign" OnValidSubmit="UpdateCampaign" FormName="edit" Enhance>
+        <DataAnnotationsValidator/>
+        <ValidationSummary role="alert"/>
+        <div class="container row px-0">
+            <input type="hidden" name="Campaign.Id" value="@Campaign.Id"/>
+            <div class="col col-10 mb-3">
+                <label for="name" class="form-label">Tên chiến dịch</label>
+                <InputText id="name" @bind-Value="Campaign.Name" class="form-control"/>
+                <ValidationMessage For="() => Campaign.Name" class="text-danger"/>
+            </div>
+            <div class="col col-2 mb-3">
+                <label for="status" class="form-label text-primary">Trạng thái</label>
+                <div class="form-check form-switch">
+                    <label class="form-check-label" for="status-pg-@(Campaign.Id)">Hoạt động</label>
+                    @if (CampaignStatus == 1)
+                    {
+                        <input class="form-check-input"
+                        @onchange="e => CampaignStatus = (bool)e.Value ? 1 : 0"
+                        type="checkbox"
+                        role="switch"
+                        checked
+                        id="status-campaign-@(Campaign.Id)"/>
+                    }
+                    else
+                    {
+                        <input class="form-check-input"
+                        @onchange="e => CampaignStatus = (bool)e.Value ? 1 : 0"
+                        type="checkbox"
+                        role="switch"
+                        id="status-campaign-@(Campaign.Id)"/>
+                    }
+                </div>
+                <ValidationMessage For="() => Campaign.Status" class="text-danger"/>
+            </div>
+            <div class="col col-12 mb-3 d-flex flex-column">
+                <label for="description" class="form-label">Thể lệ chương trình</label>
+                <BlazoredTextEditor EditorCssClass="rounded-bottom-2" ToolbarCSSClass="rounded-top-2"
+                @ref="@richEditor">
+                    <ToolbarContent>
+                        @((MarkupString)toolbar)
+                    </ToolbarContent>
+                    <EditorContent>
+                        @((MarkupString)body)
+                    </EditorContent>
+                </BlazoredTextEditor>
+                <ValidationMessage For="() => Campaign.Description" class="text-danger"/>
+            </div>
+
+            <div class="col col-6 mb-3">
+                <label for="startdate" class="form-label">Thời gian bắt đầu</label>
+                <InputDate id="startdate" @bind-Value="Campaign.StartDate" class="form-control"/>
+                <ValidationMessage For="() => Campaign.StartDate" class="text-danger"/>
+            </div>
+            <div class="col col-6 mb-3">
+                <label for="enddate" class="form-label">Thời gian kết thúc</label>
+                <InputDate id="enddate" @bind-Value="Campaign.EndDate" class="form-control"/>
+                <ValidationMessage For="() => Campaign.EndDate" class="text-danger"/>
+            </div>
+
+            <div class="col col-12 text-end">
+                <a class="text-decoration-none" href="/campaigns/@Campaign.Id/gifts">Cấu hình quà tặng</a>   
+            </div>
+
+            <div class="col col-12">
+                <h5 class="mt-3 text-primary">Thể lệ chương trình</h5>
+
+                <div class="row border mb-3 p-3 g-0 rounded">
+                    <div class="col col-3 mb-3">
+                        <label for="status" class="form-label text-primary">Scan QR Public</label>
+                        <div class="form-check form-switch">
+                            <label class="form-check-label" for="status-qrpublic-@(Campaign.Id)">Kích Hoạt</label>
+                            @if (PublicAccess)
+                            {
+                                <input class="form-check-input"
+                                @onchange="e => PublicAccess = (bool)e.Value"
+                                type="checkbox"
+                                role="switch"
+                                checked
+                                id="status-qrpublic-@(Campaign.Id)" />
+                            }
+                            else
+                            {
+                                <input class="form-check-input"
+                                @onchange="e => PublicAccess = (bool)e.Value"
+                                type="checkbox"
+                                role="switch"
+                                id="status-qrpublic-@(Campaign.Id)" />
+                            }
+                        </div>
+                        <ValidationMessage For="() => Campaign.PublicQrAccess" class="text-danger" />
+                    </div>
+                    @if (PublicAccess) {
+                        <div class="col col-3 mb-3">
+                            <QRCodeComponent QRCodeText="https://zalo.me/s/1016166362638687337/public-spin?env=TESTING&version=7" Size="150" QRCodeId="@Campaign.Id.ToString()" />
+                        </div>
+                        <div class="col col-6 mb-3">
+                            <label for="NumberOfQrAccessScanPerUser" class="form-label">Lượt quét tối đa của mỗi khách hàng</label>
+                            <InputNumber id="NumberOfQrAccessScanPerUser" @bind-Value="Campaign.NumberOfQrAccessScanPerUser" class="form-control" />
+                            <ValidationMessage For="() => Campaign.NumberOfQrAccessScanPerUser" class="text-danger" />
+                        </div>
+                    }
+                </div>
+
+                <div class="row border mb-3 p-3 g-0 rounded">
+                    <div class="col col-6 mb-3">
+                        <label for="status" class="form-label text-primary">Cho phép PG Scan QR </label>
+                        <div class="form-check form-switch">
+                            <label class="form-check-label" for="status-pgqrpublic-@(Campaign.Id)">Kích Hoạt</label>
+                            @if (PGPublicAccess)
+                            {
+                                <input class="form-check-input"
+                                       @onchange="e => PGPublicAccess = (bool)e.Value"
+                                type="checkbox"
+                                role="switch"
+                                checked
+                                id="status-pgqrpublic-@(Campaign.Id)" />
+                            }
+                            else
+                            {
+                                <input class="form-check-input"
+                                       @onchange="e => PGPublicAccess = (bool)e.Value"
+                                type="checkbox"
+                                role="switch"
+                                id="status-pgqrpublic-@(Campaign.Id)" />
+                            }
+                        </div>
+                        <ValidationMessage For="() => Campaign.PublicQrAccess" class="text-danger" />
+                    </div>
+                    @if (PGPublicAccess)
+                    {
+                        <div class="col col-6 mb-3">
+                            <label for="NumberOfPGQrAccessScanPerUser" class="form-label">Lượt quét tối đa của mỗi khách hàng</label>
+                            <InputNumber id="NumberOfPGQrAccessScanPerUser" @bind-Value="Campaign.NumberOfPGQrAccessScanPerUser" class="form-control" />
+                            <ValidationMessage For="() => Campaign.NumberOfPGQrAccessScanPerUser" class="text-danger" />
+                        </div>
+                    }
+                </div>
+
+                <div class="accordion" id="accordionCampaign">
+                    @if (Campaign.GiftRules != null)
+                    {
+                        {
+                            ruleIndex = 0;
+                        }
+                        @foreach (var giftRule in Campaign.GiftRules)
+                        {
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#collapse-@(ruleIndex)" aria-expanded="true"
+                                    aria-controls="collapseOne">
+                                        Thể lệ @(ruleIndex + 1)
+                                    </button>
+                                </h2>
+                                <div id="collapse-@(ruleIndex)" class="accordion-collapse collapse show"
+                                data-bs-parent="#accordionCampaign">
+                                    <HeaderEditable Title="@giftRule.Name"/>
+                                    <div class="accordion-body">
+                                        <div class="type-wrapper d-flex gap-4 mb-3 form-check">
+                                            <div class="me-4">
+                                                <input class="form-check-input" type="radio"
+                                                id="gift-rule-product-@ruleIndex" checked="@(giftRule.Type == 1)"
+                                                @onchange="@(() => giftRule.Type = 1)"
+                                                name="gift-rule-@ruleIndex">
+                                                <label for="gift-rule-product-@ruleIndex" class="form-check-label">Sản
+                                                    phẩm</label>
+                                            </div>
+                                            <div class="mx-4">
+                                                <input class="form-check-input" type="radio"
+                                                id="gift-rule-total-amount-@ruleIndex"
+                                                checked="@(giftRule.Type == 2)"
+                                                @onchange="@(() => giftRule.Type = 2)"
+                                                name="gift-rule-@ruleIndex">
+                                                <label for="gift-rule-total-amount-@ruleIndex" class="form-check-label">Giá
+                                                    trị đơn hàng</label>
+                                            </div>
+                                        </div>
+
+
+                                        @if (giftRule.GiftConditions != null && giftRule.Type == 1)
+                                        {
+                                            {
+                                                conditionIndex = 0;
+                                            }
+                                            @foreach (var giftCondition in giftRule.GiftConditions)
+                                            {
+                                                <div class="card p-3 mb-3 gift-condition">
+                                                    <div class="product-type d-flex">
+                                                        <h6 class="text-primary">Sản phẩm @(conditionIndex + 1)</h6>
+                                                    </div>
+                                                    @if (giftCondition.GiftProducts != null)
+                                                    {
+                                                        @foreach (var product in giftCondition.GiftProducts)
+                                                        {
+                                                            {
+                                                                productIndex = 0;
+                                                            }
+                                                            <div class="row">
+                                                                <div class="col col-6">
+                                                                    <label class="form-label pt-2">Loại</label>
+                                                                    <InputSelect @bind-Value="product.ProductId"
+                                                                    class="form-control form-select">
+                                                                        <option value="">-- Select a type --</option>
+                                                                        @if (_products != null)
+                                                                        {
+                                                                            @foreach (var p in _products)
+                                                                            {
+                                                                                <option value="@p.Id">@p.Name</option>
+                                                                            }
+                                                                        }
+                                                                    </InputSelect>
+                                                                </div>
+                                                                <div class="col col-6">
+                                                                    <label class="form-label pt-2">Số lượng</label>
+                                                                    <InputNumber class="form-control"
+                                                                    @bind-Value="product.Quantity"/>
+                                                                </div>
+                                                            </div>
+                                                            productIndex++;
+                                                        }
+                                                    }
+                                                </div>
+                                                conditionIndex++;
+                                            }
+
+                                            <div class="text-end">
+                                                <button class="btn btn-outline-primary btn-sm text-sm hover-text-white"
+                                                type="button">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg">
+                                                        <path
+                                                        d="M12 8V16M16 12H8M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                                                        stroke="currentColor" stroke-width="1.5"
+                                                        stroke-linecap="round" stroke-linejoin="round"/>
+                                                    </svg>
+                                                    <span
+                                                    @onclick="e => HandleAddConditions(Campaign.GiftRules.ToList().IndexOf(giftRule))">
+                                                        Thêm sản phẩm
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        }
+
+                                        @if (giftRule.Type == 2)
+                                        {
+                                            <h6 class="text-primary">Giá trị đơn hàng</h6>
+                                            <div class="row mb-4">
+                                                <div class="col col-12 col-md-6">
+                                                    <label>Từ (VNĐ)</label>
+                                                    <InputNumber class="form-control mt-2"
+                                                    @bind-Value="giftRule.MinAmount"/>
+                                                </div>
+                                                <div class="col col-12 col-md-6">
+                                                    <label>Đến (VNĐ)</label>
+                                                    <InputNumber class="form-control mt-2"
+                                                    @bind-Value="giftRule.MaxAmount"/>
+                                                </div>
+                                            </div>
+                                        }
+                                        <label class="py-2">Số lượt quay</label>
+                                        <InputNumber class="form-control" @bind-Value="giftRule.SpinCount"/>
+                                    </div>
+                                </div>
+                            </div>
+                            {
+                                ruleIndex++;
+                            }
+                        }
+                    }
+                </div>
+                <button class="btn btn-link btn-sm ps-0 text-sm text-decoration-none mt-3" type="button">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                        d="M12 8V16M16 12H8M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                        stroke="#F15A24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span @onclick="HandleAddRule">
+                        Thêm thể lệ
+                    </span>
+                </button>
+            </div>
+
+
+            <div class="col col-8"></div>
+            <div class="col col-4 text-end mb-4 mt-2">
+                <button class="btn btn-light bg-white border border-black border-opacity-25 mx-2 px-5 py-2">
+                    <a href="/campaigns" class="text-decoration-none text-black">Hủy bỏ</a>
+                </button>
+                <button type="submit" class="btn btn-primary ms-2 px-5 py-2">Lưu</button>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [SupplyParameterFromQuery] private int Id { get; set; }
+
+    [SupplyParameterFromForm] 
+    private Campaign? Campaign { get; set; }
+
+    private int CampaignStatus { get; set; }
+
+    private bool PublicAccess { get; set; }
+
+    private bool PGPublicAccess { get; set; }
+
+    BlazoredTextEditor richEditor = default!;
+    string toolbar = """" """";
+    string body = """" """";
+
+    private int ruleIndex { get; set; }
+    private int conditionIndex { get; set; }
+    private int productIndex { get; set; }
+    private List<Product> _products { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        toolbar = """"
+            <select class="ql-header">
+                <option selected=""></option>
+                <option value="1"></option>
+                <option value="2"></option>
+                <option value="3"></option>
+                <option value="4"></option>
+                <option value="5"></option>
+            </select>
+            <span class="ql-formats">
+                <button class="ql-bold"></button>
+                <button class="ql-italic"></button>
+                <button class="ql-underline"></button>
+                <button class="ql-strike"></button>
+            </span>
+            <span class="ql-formats">
+                <select class="ql-color"></select>
+                <select class="ql-background"></select>
+            </span>
+            <span class="ql-formats">
+                <button class="ql-list" value="ordered"></button>
+                <button class="ql-list" value="bullet"></button>
+            </span>
+            <span class="ql-formats">
+                <button class="ql-link"></button>
+            </span>
+            """";
+
+        using var context = DbFactory.CreateDbContext();
+        Campaign ??= await context.Campaigns.Include(c => c.GiftRules).ThenInclude(gr => gr.GiftConditions).ThenInclude(gc => gc.GiftProducts).FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (Campaign is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+        else
+        {
+            CampaignStatus = Campaign.Status;
+            body = Campaign.Description;
+        }
+
+        _products = context.Products.ToList();
+        PublicAccess = Campaign.PublicQrAccess;
+        PGPublicAccess = Campaign.PGQrAccess;
+    }
+
+    private async Task HandleAddRule()
+    {
+        if (Campaign.GiftRules == null)
+        {
+            Campaign.GiftRules = [];
+        }
+
+        Campaign.GiftRules.Add(new GiftRule
+        {
+            Name = "Thể lệ mới",
+            GiftConditions =
+            [
+                new GiftCondition
+                {
+                    GiftProducts =
+                    [
+                        new GiftProductRequirement()
+                    ]
+                }
+            ]
+        });
+    }
+
+    private async Task HandleAddConditions(int index)
+    {
+        if (Campaign.GiftRules == null)
+        {
+            Campaign.GiftRules = [];
+        }
+
+        Campaign.GiftRules.ElementAt(index).GiftConditions.Add(new GiftCondition
+        {
+            GiftProducts =
+            [
+                new GiftProductRequirement()
+            ]
+        });
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task UpdateCampaign()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Campaign!).State = EntityState.Modified;
+        Campaign.Status = CampaignStatus;
+        Campaign.PublicQrAccess = PublicAccess;
+        Campaign.PGQrAccess = PGPublicAccess;
+
+        if (Campaign.StartDate.Kind == DateTimeKind.Unspecified)
+        {
+            Campaign.StartDate = DateTime.SpecifyKind(Campaign.StartDate, DateTimeKind.Utc);
+        }
+
+        if (Campaign.EndDate.Kind == DateTimeKind.Unspecified)
+        {
+            Campaign.EndDate = DateTime.SpecifyKind(Campaign.EndDate, DateTimeKind.Utc);
+        }
+
+        Campaign.Description = await richEditor.GetHTML();
+
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!CampaignExists(Campaign!.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/campaigns");
+    }
+
+    private bool CampaignExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Campaigns.Any(e => e.Id == id);
+    }
+
+    private List<PageHeader.BreadcrumbItem> GetBreadcrumbs()
+    {
+        return new List<PageHeader.BreadcrumbItem>
+        {
+            new() { Name = "Danh sách chiến dịch", Url = "/campaigns" },
+            new() { Name = "Chỉnh sửa chiến dịch", Url = "/campaigns/edit?id=" + Id }
+        };
+    }
+
+}

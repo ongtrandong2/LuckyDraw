@@ -1,0 +1,62 @@
+﻿@page "/pgs/details"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+
+<PageTitle>Details</PageTitle>
+
+<h1>Details</h1>
+
+<div>
+    <h2>PG</h2>
+    <hr/>
+    @if (pg is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <dl class="row">
+            <dt class="col-sm-2">QrCode</dt>
+            <dd class="col-sm-10">@pg.QrCode</dd>
+            <dt class="col-sm-2">Name</dt>
+            <dd class="col-sm-10">@pg.FirstName</dd>
+            <dt class="col-sm-2">DateOfBirth</dt>
+            <dd class="col-sm-10">@pg.DateOfBirth</dd>
+            <dt class="col-sm-2">Gender</dt>
+            <dd class="col-sm-10">@pg.Gender</dd>
+            <dt class="col-sm-2">Height</dt>
+            <dd class="col-sm-10">@pg.Height</dd>
+            <dt class="col-sm-2">Status</dt>
+            <dd class="col-sm-10">@pg.Status</dd>
+            <dt class="col-sm-2">ZaloId</dt>
+            <dd class="col-sm-10">@pg.ZaloId</dd>
+        </dl>
+        <div>
+            <a href="@($"/pgs/edit?id={pg.Id}")">Edit</a> |
+            <a href="@("/pgs")">Back to List</a>
+        </div>
+    }
+</div>
+
+@code {
+    private PG? pg;
+
+    [SupplyParameterFromQuery] private int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        pg = await context.PG.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (pg is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+}

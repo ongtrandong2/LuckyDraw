@@ -1,0 +1,134 @@
+﻿@page "/product-types"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models
+@implements IAsyncDisposable
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageHeader
+    PageTitle="Quản lý loại sản phẩm"
+    Breadcrumbs="GetBreadcrumbs()"/>
+
+<PageTitle>Quản lý loại sản phẩm</PageTitle>
+
+<div class="my-4 d-flex">
+    <div class="flex-fill input-wrapper">
+        <SearchInput OnSearch="HandleSearch"/>
+    </div>
+    <div class="flex-fill"/>
+    <div class="flex-fill text-end">
+        <a href="/product-types/create">
+            <button class="btn btn-primary">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M12 8V16M16 12H8M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                        stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="ms-1">
+                    Thêm loại sản phẩm
+                </span>
+            </button>
+        </a>
+    </div>
+</div>
+
+<div class="table-responsive flex-fill">
+    <QuickGrid Class="table table-pg-admin" Items="productTypes.AsQueryable()" Pagination="pagination">
+        <PropertyColumn Property="producttype => producttype.Name" Title="Tên loại sản phẩm"/>
+        <PropertyColumn Property="producttype => producttype.Note" Title="Ghi chú"/>
+        
+        <TemplateColumn Context="producttype" Title="Action">
+            <a href="@($"product-types/details?id={producttype.Id}")" class="mx-1" title="Xem chi tiết">
+                <svg width="31" height="31" viewBox="0 0 31 31" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M5.27526 19.3621C4.27925 18.0682 3.78125 17.4212 3.78125 15.5C3.78125 13.5788 4.27925 12.9319 5.27526 11.6379C7.26402 9.05417 10.5993 6.125 15.5 6.125C20.4007 6.125 23.7359 9.05417 25.7247 11.6379C26.7207 12.9319 27.2188 13.5788 27.2188 15.5C27.2188 17.4212 26.7207 18.0682 25.7247 19.3621C23.7359 21.9458 20.4007 24.875 15.5 24.875C10.5993 24.875 7.26402 21.9458 5.27526 19.3621Z"
+                        stroke="#17A049" stroke-width="1.5"/>
+                    <path
+                        d="M19.0156 15.5C19.0156 17.4417 17.4417 19.0156 15.5 19.0156C13.5583 19.0156 11.9844 17.4417 11.9844 15.5C11.9844 13.5583 13.5583 11.9844 15.5 11.9844C17.4417 11.9844 19.0156 13.5583 19.0156 15.5Z"
+                        stroke="#17A049" stroke-width="1.5"/>
+                </svg>
+            </a>
+            <a href="@($"product-types/edit?id={producttype.Id}")" class="mx-1" title="Chỉnh sửa">
+                <svg width="31" height="31" viewBox="0 0 31 31" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M25.6094 13.9836V15.5C25.6094 20.2656 25.6094 22.6484 24.1289 24.1289C22.6484 25.6094 20.2656 25.6094 15.5 25.6094C10.7344 25.6094 8.35159 25.6094 6.87111 24.1289C5.39062 22.6484 5.39062 20.2656 5.39062 15.5C5.39062 10.7344 5.39062 8.35159 6.87111 6.87111C8.35159 5.39062 10.7344 5.39062 15.5 5.39062H17.0164"
+                        stroke="#17A049" stroke-width="1.5" stroke-linecap="round"/>
+                    <path
+                        d="M20.2038 6.86133C20.2038 6.86133 20.2857 8.25514 21.5156 9.48497C22.7455 10.7148 24.1392 10.7968 24.1392 10.7968M13.5801 19.1265L11.874 17.4205"
+                        stroke="#17A049" stroke-width="1.5"/>
+                    <path
+                        d="M20.8587 6.20569L20.2027 6.8616L14.1726 12.8917C13.7642 13.3001 13.56 13.5043 13.3843 13.7295C13.1772 13.9951 12.9995 14.2825 12.8546 14.5866C12.7318 14.8444 12.6404 15.1184 12.4578 15.6664L11.873 17.4208L11.4946 18.556C11.4047 18.8257 11.4749 19.1229 11.6759 19.324C11.8769 19.5249 12.1742 19.5951 12.4438 19.5052L13.579 19.1268L15.3334 18.542C15.8814 18.3593 16.1554 18.268 16.4132 18.1452C16.7173 18.0003 17.0047 17.8226 17.2703 17.6155C17.4955 17.4398 17.6997 17.2356 18.1081 16.8272L24.1382 10.7971L24.7942 10.1412C25.8808 9.05442 25.8808 7.29244 24.7942 6.20569C23.7074 5.11894 21.9454 5.11894 20.8587 6.20569Z"
+                        stroke="#17A049" stroke-width="1.5"/>
+                </svg>
+            </a>
+            <a href="@($"product-types/delete?id={producttype.Id}")" title="Xóa loại sản phẩm">
+                <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12.168 13.3672L12.7344 19.0312" stroke="#F15A24" stroke-width="1.5"
+                          stroke-linecap="round"/>
+                    <path d="M17.832 13.3672L17.2656 19.0312" stroke="#F15A24" stroke-width="1.5"
+                          stroke-linecap="round"/>
+                    <path
+                        d="M8.76953 7.70312C8.83283 7.70312 8.86448 7.70312 8.89318 7.7024C9.82598 7.67876 10.6489 7.08564 10.9663 6.20817C10.9761 6.18118 10.9861 6.15116 11.0061 6.0911L11.1161 5.76116C11.21 5.4795 11.2569 5.33867 11.3192 5.21909C11.5676 4.74203 12.0272 4.41076 12.5583 4.32595C12.6915 4.30469 12.84 4.30469 13.1369 4.30469H16.8631C17.16 4.30469 17.3086 4.30469 17.4417 4.32595C17.9728 4.41076 18.4324 4.74203 18.6808 5.21909C18.7432 5.33867 18.7901 5.4795 18.884 5.76116L18.994 6.0911C19.0139 6.15108 19.024 6.1812 19.0337 6.20817C19.3511 7.08564 20.174 7.67876 21.1069 7.7024C21.1355 7.70312 21.1671 7.70312 21.2305 7.70312"
+                        stroke="#F15A24" stroke-width="1.5"/>
+                    <path d="M24.629 7.70312H5.37109" stroke="#F15A24" stroke-width="1.5" stroke-linecap="round"/>
+                    <path
+                        d="M22.7415 10.5352L22.2205 18.3505C22.02 21.358 21.9197 22.8619 20.9398 23.7785C19.96 24.6953 18.4529 24.6953 15.4387 24.6953H14.5626C11.5484 24.6953 10.0413 24.6953 9.06144 23.7785C8.08154 22.8619 7.98129 21.358 7.78079 18.3505L7.25977 10.5352"
+                        stroke="#F15A24" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </a>
+        </TemplateColumn>
+    </QuickGrid>
+</div>
+
+<div class="table-pg-admin-pagination">
+    <PaginationHelper TotalRecords="TotalRecords"
+                      OnPageChanged="newPage => pagination.SetCurrentPageIndexAsync(newPage)"
+                      OnItemsPerPageChanged="newPage => pagination.ItemsPerPage = newPage"/>
+</div>
+
+@code {
+    private List<ProductType> productTypes = new();
+    private ApplicationDbContext context = default!;
+    private readonly PaginationState pagination = new() { ItemsPerPage = 10 };
+    private int TotalRecords { get; set; }
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+        TotalRecords = context.ProductTypes.Count();
+        HandleSearch("");
+    }
+
+    private List<PageHeader.BreadcrumbItem> GetBreadcrumbs()
+    {
+        return new List<PageHeader.BreadcrumbItem>
+        {
+            new() { Name = "Danh sách loại sản phẩm", Url = "/product-types" }
+        };
+    }
+
+    private void HandleSearch(string searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            productTypes = context.ProductTypes.OrderBy(p => p.Id).ToList();
+        }
+        else
+        {
+            productTypes = context.ProductTypes
+                .Where(pt => pt.Name.ToLower().Contains(searchTerm.ToLower()) ||
+                            (pt.Note != null && pt.Note.ToLower().Contains(searchTerm.ToLower())))
+                .OrderBy(p => p.Id)
+                .ToList();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await context.DisposeAsync();
+    }
+}

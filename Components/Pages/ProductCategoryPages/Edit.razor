@@ -1,0 +1,105 @@
+﻿@page "/product-categories/edit"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<PageHeader PageTitle="Quản lý danh mục Sản phẩm"
+            Breadcrumbs="GetBreadcrumbs()"/>
+
+<PageTitle>Chỉnh sửa Danh mục Sản phẩm</PageTitle>
+
+@if (ProductCategory is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h4 class="text-primary my-4">Chỉnh sửa danh mục sản phẩm</h4>
+    <EditForm method="post" Model="ProductCategory" OnValidSubmit="UpdateProductCategory" FormName="edit" Enhance>
+        <DataAnnotationsValidator/>
+        <ValidationSummary role="alert"/>
+        <div class="container row px-0">
+            <input type="hidden" name="ProductCategory.Id" value="@ProductCategory.Id"/>
+            <div class="col col-12 col-md-6 mb-3">
+                <label for="name" class="form-label">Tên danh mục</label>
+                <InputText id="name" @bind-Value="ProductCategory.Name" class="form-control"/>
+                <ValidationMessage For="() => ProductCategory.Name" class="text-danger"/>
+            </div>
+            <div class="col col-12 col-md-6 mb-3">
+                <label for="note" class="form-label">Ghi chú</label>
+                <InputText id="note" @bind-Value="ProductCategory.Note" class="form-control"/>
+                <ValidationMessage For="() => ProductCategory.Note" class="text-danger"/>
+            </div>
+            <div class="col col-8"></div>
+            <div class="col col-4 text-end mb-4 mt-2">
+                <button class="btn btn-light bg-white border border-black border-opacity-25 mx-2 px-5 py-2">
+                    <a href="/product-categories" class="text-decoration-none text-black">Hủy bỏ</a>
+                </button>
+                <button type="submit" class="btn btn-primary ms-2 px-5 py-2">Lưu</button>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private ProductCategory? ProductCategory { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        ProductCategory ??= await context.ProductCategories.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (ProductCategory is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task UpdateProductCategory()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(ProductCategory!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ProductCategoryExists(ProductCategory!.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/product-categories");
+    }
+
+    private List<PageHeader.BreadcrumbItem> GetBreadcrumbs()
+    {
+        return new List<PageHeader.BreadcrumbItem>
+        {
+            new() { Name = "Danh sách danh mục sản phẩm", Url = "/product-categories" },
+            new() { Name = "Chỉnh sửa danh mục sản phẩm", Url = "/product-categories/edit?id=" + Id }
+        };
+    }
+
+    private bool ProductCategoryExists(int id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.ProductCategories.Any(e => e.Id == id);
+    }
+}

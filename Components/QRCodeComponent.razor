@@ -1,0 +1,23 @@
+﻿@inject IJSRuntime JSRuntime;
+@rendermode InteractiveServer
+
+<div id="@QRCodeId"></div>
+
+@code {
+    [Parameter] public string QRCodeText { get; set; } = string.Empty;
+    [Parameter] public int Size { get; set; } = 150;
+    [Parameter] public string QRCodeId { get; set; } = string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(QRCodeText))
+        {
+            await GenerateQRCode();
+        }
+    }
+
+    private async Task GenerateQRCode()
+    {
+        await JSRuntime.InvokeVoidAsync("generateQRCode", QRCodeId, QRCodeText, Size);
+    }
+}

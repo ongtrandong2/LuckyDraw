@@ -1,0 +1,131 @@
+﻿@implements IDisposable
+
+@inject NavigationManager NavigationManager
+
+<AuthorizeView>
+    <Authorized>
+        <div class="top-row navbar navbar-dark">
+            <div class="container-fluid nav-bar-logo">
+                <a class="h-100" href="/">
+                    <img class="h-100" src="images/logo.png" alt="Creative Point" />
+                </a>
+            </div>
+        </div>
+
+        <input type="checkbox" title="Navigation menu" class="navbar-toggler"/>
+
+        <div class="nav-scrollable d-flex flex-column" onclick="document.querySelector('.navbar-toggler').click()">
+            <nav class="flex-column flex-fill">
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="pgs" Match="NavLinkMatch.All">
+                        <span class="bi bi-pg-nav-menu" aria-hidden="true"></span> Quản lý PG
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="products">
+                        <span class="bi bi-product-nav-menu" aria-hidden="true"></span> Sản phẩm
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="gifts">
+                        <span class="bi bi-rewards-nav-menu" aria-hidden="true"></span> Phần thưởng
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="campaigns">
+                        <span class="bi bi-campaign-nav-menu" aria-hidden="true"></span> Chiến dịch
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="user-management">
+                        <span class="bi bi-manage-list-nav-menu" aria-hidden="true"></span> Danh sách dự thưởng
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="checkins">
+                        <span class="bi bi-checkin-nav-menu" aria-hidden="true"></span> Chấm công
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="reports">
+                        <span class="bi bi-report-nav-menu" aria-hidden="true"></span> Report
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="dashboard">
+                        <span class="bi bi-report-nav-menu" aria-hidden="true"></span> Biểu đồ nâng cao
+                    </NavLink>
+                </div>
+                <hr />
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="product-types">
+                        <span class="bi bi-report-product-types-menu" aria-hidden="true"></span> Loại sản phẩm
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="product-categories">
+                        <span class="bi bi-report-product-cate-menu" aria-hidden="true"></span> Danh mục sản phẩm
+                    </NavLink>
+                </div>
+                @* <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Register">
+                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Login">
+                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+            </NotAuthorized> *@
+            </nav>
+            <div class="px-3 py-2 bg-primary rounded m-3">
+                <form action="Account/Logout" method="post">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                    <button type="submit" class="nav-link">
+                        <span class="me-3">
+                            <svg width="25" height="24" viewBox="0 0 25 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M9.73 16.2407V18.3609C9.73 18.9232 9.95336 19.4625 10.351 19.8601C10.7486 20.2577 11.2878 20.4811 11.8502 20.4811H20.331C20.8933 20.4811 21.4325 20.2577 21.8302 19.8601C22.2278 19.4625 22.4512 18.9232 22.4512 18.3609V5.63969C22.4512 5.07738 22.2278 4.53812 21.8302 4.14053C21.4325 3.74289 20.8933 3.51953 20.331 3.51953H12.2742C11.1033 3.51953 9.73 4.46884 9.73 5.63969V7.75989" stroke="white" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M6.33789 16.2405L2.09744 12.0001L6.33789 7.75977" stroke="white" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M16.5146 12H2.94546" stroke="white" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </span>
+                        <span class="text-white">
+                            Logout
+                        </span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+
+}
+

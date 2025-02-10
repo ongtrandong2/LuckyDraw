@@ -1,0 +1,50 @@
+﻿@using System.Collections.Generic
+
+@code {
+    [Parameter] public string PageTitle { get; set; }
+    [Parameter] public List<BreadcrumbItem> Breadcrumbs { get; set; }
+}
+
+<div class="page-header d-flex">
+    <div class="page-info flex-fill">
+        <!-- Display Page Title -->
+        <h6 class="mb-0">@PageTitle</h6>
+
+        <!-- Display Breadcrumbs -->
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                @foreach (var breadcrumb in Breadcrumbs)
+                {
+                    <li class="breadcrumb-item">
+                        <a href="@breadcrumb.Url">@breadcrumb.Name</a>
+                    </li>
+                }
+            </ol>
+        </nav>
+    </div>
+    <div class="user-info d-flex align-items-center">
+        <div class="px-2">
+            <svg width="52" height="50" viewBox="0 0 52 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0.6875" width="50.4825" height="50" rx="10" fill="#FEEFE9"/>
+                <path d="M21.71 31.5625C22.3241 33.2011 23.981 34.375 25.9287 34.375C27.8764 34.375 29.5334 33.2011 30.1475 31.5625" stroke="#F15A24" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M32.256 22.8527V22.1922C32.256 18.5652 29.4231 15.625 25.9287 15.625C22.4342 15.625 19.6014 18.5652 19.6014 22.1922V22.8527C19.6014 23.6455 19.3753 24.4204 18.9516 25.0801L17.9134 26.6964C16.9651 28.1728 17.6891 30.1796 19.3384 30.6465C23.6532 31.8678 28.2043 31.8678 32.519 30.6465C34.1684 30.1796 34.8923 28.1728 33.944 26.6964L32.9058 25.0801C32.4821 24.4204 32.256 23.6455 32.256 22.8527Z" stroke="#F15A24" stroke-width="1.5"/>
+            </svg>
+        </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="border rounded-4 px-3 py-2 d-flex align-items-center">
+                    <span class="name pe-2">@context.User.Identity?.Name</span>
+                    <div class="avatar-wrapper bg-info rounded-circle"/>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+</div>
+
+@code {
+    public class BreadcrumbItem
+    {
+        public string Name { get; set; }
+        public string Url { get; set; }
+    }
+}

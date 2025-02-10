@@ -1,0 +1,52 @@
+﻿@page "/gifts/details"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@attribute [Authorize]
+
+<PageTitle>Details</PageTitle>
+
+<h1>Details</h1>
+
+<div>
+    <h2>Gift</h2>
+    <hr/>
+    @if (gift is null)
+    {
+        <p><em>Loading...</em></p>
+    }
+    else
+    {
+        <dl class="row">
+            <dt class="col-sm-2">Name</dt>
+            <dd class="col-sm-10">@gift.Name</dd>
+            <dt class="col-sm-2">ImageUrl</dt>
+            <dd class="col-sm-10">@gift.ImageUrl</dd>
+        </dl>
+        <div>
+            <a href="@($"/gifts/edit?id={gift.Id}")">Edit</a> |
+            <a href="@("/gifts")">Back to List</a>
+        </div>
+    }
+</div>
+
+@code {
+    private Gift? gift;
+
+    [SupplyParameterFromQuery] private int Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        gift = await context.Gift.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (gift is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+}

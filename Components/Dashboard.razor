@@ -1,0 +1,265 @@
+﻿@page "/dashboard"
+@rendermode InteractiveServer
+@using System.Text
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.EntityFrameworkCore
+@using PGAdmin.Data
+@using PGAdmin.Models
+@using PGAdmin.Models.Reward
+@implements IAsyncDisposable;
+@inject IJSRuntime JSRuntime;
+@inject NavigationManager NavigationManager;
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+<PageHeader PageTitle="Biểu đồ nâng cao"
+            Breadcrumbs="GetBreadcrumbs()" />
+
+<PageTitle>Biểu đồ nâng cao</PageTitle>
+
+<script>
+    function downloadCsvFile(filename, data) {
+        var universalBOM = "\uFEFF";
+        var a = window.document.createElement('a');
+        a.setAttribute('href', 'data:text/csv; charset=utf-8,' + encodeURIComponent(universalBOM + data));
+        a.setAttribute('download', filename);
+        window.document.body.appendChild(a);
+        a.click();
+    }
+</script>
+
+<div class="my-4 d-flex">
+    <div class="flex-fill input-wrapper">
+    </div>
+    <div class="flex-fill" />
+
+    <div class="container py-4">
+        <div class="row g-4">
+            <!-- Total Revenue Card -->
+            <div class="col-md-4">
+                <MetricCard BackgroundColor="#fee2e2"
+                            IconBackgroundColor="#fecaca"
+                            IconColor="#b91c1c"
+                            MetricValue="3.500.000.000"
+                            MetricLabel="Tổng doanh thu">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10V5" />
+                    </svg>
+                </MetricCard>
+            </div>
+
+            <div class="col-md-4">
+                <MetricCard BackgroundColor="#d1fae5"
+                            IconBackgroundColor="#bbf7d0"
+                            IconColor="#15803d"
+                            MetricValue="100.000"
+                            MetricLabel="Lượt Mua hàng">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h11M9 21v-6m0-6V3m-6 6h.01M3 17v-4m16 0V7m-6 6h.01" />
+                    </svg>
+                </MetricCard>
+            </div>
+
+            <!-- Customers Card -->
+            <div class="col-md-4">
+                <MetricCard BackgroundColor="#ede9fe"
+                            IconBackgroundColor="#e9d5ff"
+                            IconColor="#6b21a8"
+                            MetricValue="40.000"
+                            MetricLabel="Lượt chơi game">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14h5m6 0v2m0-6h4m-4 0h-4" />
+                    </svg>
+                </MetricCard>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex-fill text-end">
+        <button class="btn btn-light mx-2" @onclick="() => ShowFilterModal()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 6H10" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M3 12H12" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M19 12H21" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M14 6L21 6" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M13 18H20" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M3 18H6" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="8" cy="18" r="2" stroke="#16151C" stroke-width="1.5" />
+                <circle cx="17" cy="12" r="2" stroke="#16151C" stroke-width="1.5" />
+                <circle cx="12" cy="6" r="2" stroke="#16151C" stroke-width="1.5" />
+            </svg>
+            <span class="ms-1">
+                Filter
+            </span>
+        </button>
+
+        <button class="btn btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <g clip-path="url(#clip0_68_16742)">
+                    <path d="M8.37291 7.26732L10.8976 4.73157V15.3046C10.8976 15.5969 11.0138 15.8774 11.2206 16.0841C11.4273 16.2909 11.7077 16.4071 12.0001 16.4071C12.2925 16.4071 12.573 16.2909 12.7797 16.0841C12.9864 15.8774 13.1026 15.5969 13.1026 15.3046V4.73157L15.6273 7.26732C15.7298 7.37063 15.8518 7.45266 15.9861 7.50863C16.1205 7.5646 16.2646 7.59348 16.4101 7.59348C16.5556 7.59348 16.6997 7.5646 16.8341 7.50863C16.9684 7.45266 17.0903 7.37063 17.1929 7.26732C17.2962 7.16485 17.3783 7.04288 17.4342 6.90854C17.4902 6.7742 17.519 6.6301 17.519 6.4846C17.519 6.33901 17.4902 6.19491 17.4342 6.06057C17.3783 5.92623 17.2962 5.80426 17.1929 5.70179L12.7829 1.29179C12.678 1.19138 12.5544 1.11273 12.4191 1.06023C12.1506 0.949977 11.8496 0.949977 11.5811 1.06023C11.4458 1.11273 11.3222 1.19138 11.2173 1.29179L6.80729 5.70179C6.70454 5.80463 6.62297 5.9266 6.56738 6.06095C6.51169 6.1952 6.4831 6.3392 6.4831 6.4846C6.4831 6.62991 6.51169 6.77391 6.56738 6.90816C6.62297 7.04251 6.70454 7.16457 6.80729 7.26732C6.91013 7.37016 7.03219 7.45173 7.16644 7.50732C7.30079 7.56291 7.44469 7.5916 7.5901 7.5916C7.7355 7.5916 7.87941 7.56291 8.01375 7.50732C8.148 7.45173 8.27007 7.37016 8.37291 7.26732Z" fill="white" />
+                </g>
+                <defs>
+                    <clipPath id="clip0_68_16742">
+                        <rect width="24" height="24" fill="white" />
+                    </clipPath>
+                </defs>
+            </svg>
+            <span class="ms-1">
+                Xuất báo cáo
+            </span>
+        </button>
+    </div>
+</div>
+
+<div class="table-responsive flex-fill">
+    <QuickGrid Class="table table-pg-admin table-hover align-middle" Items="_metrics.AsQueryable()">
+        <PropertyColumn Property="metric => metric.Location" Title="Địa điểm" />
+        <PropertyColumn Property="metric => metric.PGName" Title="PG" />
+        <PropertyColumn Property="metric => metric.PurchaseCount" Title="Lượt Mua hàng" />
+        <PropertyColumn Property="metric => metric.TotalSales" Title="Doanh số" />
+        <PropertyColumn Property="metric => metric.GamePlayCount" Title="Lượt chơi game" />
+        <PropertyColumn Property="metric => metric.SalesPerGamePlay" Title="Doanh số trên lượt chơi" Format="C2" />
+    </QuickGrid>
+</div>
+
+<div class="table-pg-admin-pagination">
+    <PaginationHelper TotalRecords="TotalRecords"
+                      OnPageChanged="newPage => {
+                         pagination.SetCurrentPageIndexAsync(newPage);
+                     }"
+                      OnItemsPerPageChanged="newPage => pagination.ItemsPerPage = newPage" />
+</div>
+
+@if (_showFilterModal)
+{
+    <div class="modal fade modal-lg show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title ms-auto">Bộ lọc</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="search-input-wrapper">
+                            <div class="icon-wrapper">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M2.75 11.5C2.75 16.3325 6.66751 20.25 11.5 20.25C16.3325 20.25 20.25 16.3325 20.25 11.5C20.25 6.66751 16.3325 2.75 11.5 2.75C6.66751 2.75 2.75 6.66751 2.75 11.5ZM11.5 21.75C5.83908 21.75 1.25 17.1609 1.25 11.5C1.25 5.83908 5.83908 1.25 11.5 1.25C17.1609 1.25 21.75 5.83908 21.75 11.5C21.75 14.0605 20.8111 16.4017 19.2589 18.1982L22.5303 21.4697C22.8232 21.7626 22.8232 22.2374 22.5303 22.5303C22.2374 22.8232 21.7626 22.8232 21.4697 22.5303L18.1982 19.2589C16.4017 20.8111 14.0605 21.75 11.5 21.75Z" fill="#F15A24" />
+                                </svg>
+                            </div>
+                            <input type="text" class="search-input" @bind="_filterQuery" placeholder="Nhập mã đơn hàng, Tên Khách hàng,..." />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col col-12 fw-bold py-2">Tìm kiếm theo thời gian</div>
+                        <div class="mb-3 col col-6">
+                            <label class="form-label">Bắt đầu</label>
+                            <input type="date" class="form-control" @bind="_startDate" />
+                        </div>
+                        <div class="mb-3 col col-6">
+                            <label class="form-label">Kết thúc</label>
+                            <input type="date" class="form-control" @bind="_endDate" />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold py-2">Tên PG</label>
+                        <select class="form-select" @bind="_selectedPgId">
+                            <option value="">Chọn tên PG</option>
+                            @foreach (var pg in _pgs)
+                            {
+                                <option value="@pg.Id">@pg.FirstName</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light border px-4 bg-white" @onclick="HideFilterModal">Hủy bỏ</button>
+                    <button type="button" class="btn btn-primary px-4" @onclick="async () => {
+                        await pagination.SetCurrentPageIndexAsync(0);
+                        
+                    }">
+                        Áp dụng
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private ApplicationDbContext context = default!;
+    public class PGSummaryViewModel
+    {
+        public string Location { get; set; }
+        public string PGName { get; set; }
+        public int PurchaseCount { get; set; }
+        public decimal TotalSales { get; set; }
+        public int GamePlayCount { get; set; }
+        public decimal SalesPerGamePlay { get; set; }
+    }
+    private List<PGSummaryViewModel> _metrics = new();
+    private string _search = "";
+    private int TotalRecords { get; set; }
+    private readonly PaginationState pagination = new() { ItemsPerPage = 10 };
+    private bool _showFilterModal;
+    private string _filterQuery = "";
+    private DateTime? _startDate;
+    private DateTime? _endDate;
+    private string _selectedPgId = "";
+    private List<PG> _pgs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        context = DbFactory.CreateDbContext();
+
+        var pgSummary = await context.PG
+            .Include(pg => pg.CheckIns)
+            .Include(pg => pg.RewardOrders)
+            .ThenInclude(ro => ro.Products) // Load Products for each RewardOrder
+            .Select(pg => new PGSummaryViewModel
+                {
+                    Location = pg.AddressText,
+                    PGName = $"{pg.FirstName} {pg.LastName}",
+                    PurchaseCount = pg.RewardOrders.SelectMany(ro => ro.Products).Count(),
+                    TotalSales = pg.RewardOrders
+                            .SelectMany(ro => ro.Products)
+                            .Sum(p => p.Price * p.Quantity), // Calculate total sales from RewardOrderProducts
+                    GamePlayCount = pg.CheckIns.Count,
+                    SalesPerGamePlay = pg.CheckIns.Count > 0
+                            ? pg.RewardOrders
+                                .SelectMany(ro => ro.Products)
+                                .Sum(p => p.Price * p.Quantity) / pg.CheckIns.Count
+                            : 0
+                })
+            .ToListAsync();
+
+        _metrics = pgSummary;
+    }
+
+
+
+    private List<PageHeader.BreadcrumbItem> GetBreadcrumbs()
+    {
+        return new List<PageHeader.BreadcrumbItem>
+        {
+            new() { Name = "Báo cáo chi tiết", Url = "/report" }
+        };
+    }
+
+    private void ShowFilterModal()
+    {
+        _showFilterModal = true;
+    }
+
+    private void HideFilterModal()
+    {
+        _showFilterModal = false;
+    }
+
+
+
+
+    public async ValueTask DisposeAsync()
+    {
+        await context.DisposeAsync();
+    }
+}
