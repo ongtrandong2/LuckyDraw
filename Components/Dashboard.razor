@@ -6,6 +6,8 @@
 @using PGAdmin.Data
 @using PGAdmin.Models
 @using PGAdmin.Models.Reward
+@using System.Drawing
+@using System.Collections.ObjectModel
 @implements IAsyncDisposable;
 @inject IJSRuntime JSRuntime;
 @inject NavigationManager NavigationManager;
@@ -39,7 +41,7 @@
                 <MetricCard BackgroundColor="#fee2e2"
                             IconBackgroundColor="#fecaca"
                             IconColor="#b91c1c"
-                            MetricValue="3.500.000.000"
+                            MetricValue="@(_metrics.Sum(x => x.TotalSales).ToString("N0") + " VNĐ")"
                             MetricLabel="Tổng doanh thu">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10V5" />
@@ -51,7 +53,7 @@
                 <MetricCard BackgroundColor="#d1fae5"
                             IconBackgroundColor="#bbf7d0"
                             IconColor="#15803d"
-                            MetricValue="100.000"
+                            MetricValue="@_metrics.Sum(x => x.PurchaseCount).ToString()"
                             MetricLabel="Lượt Mua hàng">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h11M9 21v-6m0-6V3m-6 6h.01M3 17v-4m16 0V7m-6 6h.01" />
@@ -64,7 +66,7 @@
                 <MetricCard BackgroundColor="#ede9fe"
                             IconBackgroundColor="#e9d5ff"
                             IconColor="#6b21a8"
-                            MetricValue="40.000"
+                            MetricValue="@_metrics.Sum(x => x.GamePlayCount).ToString()"
                             MetricLabel="Lượt chơi game">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14h5m6 0v2m0-6h4m-4 0h-4" />
@@ -108,6 +110,16 @@
             </span>
         </button>
     </div>
+</div>
+<div class="row g-5">
+    <div class="col-md-6">
+       
+    </div>
+</div>
+
+@* Biểu đồ Tổng số đơn hàng *@
+<div class="container-fluid overflow-x-auto">
+    <LineChart @ref="lineChart" Width="800" />
 </div>
 
 <div class="table-responsive flex-fill">
@@ -207,32 +219,95 @@
     private string _selectedPgId = "";
     private List<PG> _pgs = new();
 
+
+    private LineChart lineChart = default!;
+    private LineChartOptions lineChartOptions = default!;
+    private ChartData chartData = default!;
+
+    private List<double?> TotalOrderPrices { get; set; } = new List<double?>();
+
+
+    protected override void OnInitialized()
+    {
+      
+        var colors = ColorUtility.CategoricalTwelveColors;
+
+        var labels = new List<string> { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
+        var datasets = new List<IChartDataset>();
+
+        foreach (var item in _metrics)
+        {
+            TotalOrderPrices.Add((double)item.TotalSales);
+        }
+
+        var dataset3 = new LineChartDataset
+            {
+                Label = "Other",
+                Data = TotalOrderPrices, // Chuyển đổi danh sách sang List<double?>
+                BackgroundColor = colors[2],
+                BorderColor = colors[2],
+                BorderWidth = 2,
+                HoverBorderWidth = 4,
+                // PointBackgroundColor = colors[2],
+                // PointRadius = 0, // hide points
+                // PointHoverRadius = 4,
+            };
+        datasets.Add(dataset3);
+
+        chartData = new ChartData { Labels = labels, Datasets = datasets };
+
+        lineChartOptions = new();
+        lineChartOptions.Responsive = true;
+        lineChartOptions.Interaction = new Interaction { Mode = InteractionMode.Index };
+
+        lineChartOptions.Scales.X!.Title = new ChartAxesTitle { Text = "2025", Display = true };
+        lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "Tổng doanh thu", Display = true };
+
+        lineChartOptions.Plugins.Title!.Text = "Tổng doanh thu";
+        lineChartOptions.Plugins.Title.Display = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await lineChart.InitializeAsync(chartData, lineChartOptions);
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+
+
     protected override async Task OnInitializedAsync()
     {
         context = DbFactory.CreateDbContext();
 
-        var pgSummary = await context.PG
-            .Include(pg => pg.CheckIns)
-            .Include(pg => pg.RewardOrders)
-            .ThenInclude(ro => ro.Products) // Load Products for each RewardOrder
-            .Select(pg => new PGSummaryViewModel
+        var pgSummary = await context.RewardOrders
+            .Include(pg => pg.Pg)
+            .Include(ro => ro.Products)
+            .Include(d => d.Details)
+            .Where(x => x.PgId != null ) // Không lấy dòng có PG null(DB hiện đang tồn tại dòng có PG null)
+            .GroupBy(o => new { o.Pg.AddressText, o.Pg.FirstName, o.Pg.LastName })
+            .Select(g => new PGSummaryViewModel
                 {
-                    Location = pg.AddressText,
-                    PGName = $"{pg.FirstName} {pg.LastName}",
-                    PurchaseCount = pg.RewardOrders.SelectMany(ro => ro.Products).Count(),
-                    TotalSales = pg.RewardOrders
+                    Location = g.Key.AddressText,
+                    PGName = $"{g.Key.FirstName} {g.Key.LastName}",
+                    PurchaseCount =g.Count(),
+                    TotalSales = g
                             .SelectMany(ro => ro.Products)
                             .Sum(p => p.Price * p.Quantity), // Calculate total sales from RewardOrderProducts
-                    GamePlayCount = pg.CheckIns.Count,
-                    SalesPerGamePlay = pg.CheckIns.Count > 0
-                            ? pg.RewardOrders
-                                .SelectMany(ro => ro.Products)
-                                .Sum(p => p.Price * p.Quantity) / pg.CheckIns.Count
-                            : 0
+                    GamePlayCount = g.SelectMany(x => x.Details).Where(p => p.Status == 2).Count(),
+                    SalesPerGamePlay = g.Count() > 0 ?  
+                                            ((g.SelectMany(ro => ro.Products)
+                                            .Sum(p => p.Price * p.Quantity)) / g.Count()
+                                        ) : 0// Calculate total sales from RewardOrderProducts
                 })
+            .OrderByDescending(u => u.TotalSales)
+            .Skip(pagination.CurrentPageIndex * pagination.ItemsPerPage)
+            .Take(pagination.ItemsPerPage)
             .ToListAsync();
 
-        _metrics = pgSummary;
+        _metrics = pgSummary;    
     }
 
 
@@ -261,5 +336,11 @@
     public async ValueTask DisposeAsync()
     {
         await context.DisposeAsync();
+    }
+
+    public class DataValue
+    {
+        public double Value { get; set; }
+        public DateTime Date { get; set; }
     }
 }
