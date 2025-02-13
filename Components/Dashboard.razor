@@ -174,17 +174,6 @@
                 </div>
                 <div class="modal-body">
                     <div class="row">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold py-2">Tên PG</label>
-                            <select class="form-select" @bind="_selectedPgId">
-                                <option value="">Chọn tên PG</option>
-                                @foreach (var pg in _pgs)
-                                {
-                                    <option value="@pg.Id">@pg.FirstName</option>
-                                }
-                            </select>
-                        </div>
-
                         <div class="col col-12 fw-bold py-2">Tìm kiếm theo thời gian</div>
                         <div class="mb-3 col col-6">
                             <label class="form-label">Bắt đầu</label>
@@ -287,10 +276,6 @@
     private string _filterQuery = "";
     private DateTime? _startDate;
     private DateTime? _endDate;
-    private string _selectedPgId = "";
-    private List<PG> _pgs = new();
-    [SupplyParameterFromQuery]
-    private string? Query { get; set; }
 
     [SupplyParameterFromQuery]
     private string? StartDate { get; set; }
@@ -298,8 +283,6 @@
     [SupplyParameterFromQuery]
     private string? EndDate { get; set; }
 
-    [SupplyParameterFromQuery]
-    private string? PgId { get; set; }
 
 
     private LineChart lineChartSales = default!;
@@ -318,7 +301,6 @@
     protected override async Task OnInitializedAsync()
     {
         context = DbFactory.CreateDbContext();
-        _pgs = await context.PG.ToListAsync();
 
         if (!string.IsNullOrEmpty(StartDate))
             _startDate = DateTime.Parse(StartDate);
@@ -326,14 +308,11 @@
         if (!string.IsNullOrEmpty(EndDate))
             _endDate = DateTime.Parse(EndDate);
 
-        if (!string.IsNullOrEmpty(PgId))
-            _selectedPgId = PgId;
-
         var pgSummary = await context.RewardOrders
             .Include(pg => pg.Pg)
             .Include(ro => ro.Products)
             .Include(d => d.Details)
-            .Where(x => x.PgId != null) // Không lấy dòng có PG null(DB hiện đang tồn tại dòng có PG null)
+            .Where(x => x.PgId != null)
             .GroupBy(o => new { o.Pg.AddressText, o.Pg.FirstName, o.Pg.LastName })
             .Select(g => new PGSummaryViewModel
                 {
@@ -412,74 +391,6 @@
     }
 
 
-    protected override void OnInitialized()
-    {
-
-        var colors = ColorUtility.CategoricalTwelveColors;
-
-        var labels = new List<string> { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
-        // var datasets = new List<IChartDataset>();
-
-        var datasetsSales = new List<IChartDataset>
-        {
-            new LineChartDataset
-            {
-                Label = "Tổng doanh thu",
-                Data = TotalOrderPrices,
-                BackgroundColor = colors[2],
-                BorderColor = colors[2],
-                BorderWidth = 2,
-                HoverBorderWidth = 4
-            }
-        };
-
-        var datasetsOrders = new List<IChartDataset>
-        {
-            new LineChartDataset
-            {
-                Label = "Lượt đặt hàng",
-                Data = TotalOrders,
-                BackgroundColor = colors[4], // Different color for the orders dataset
-                BorderColor = colors[4],
-                BorderWidth = 2,
-                HoverBorderWidth = 4
-            }
-        };
-
-        var datasetsPlays = new List<IChartDataset>
-        {
-            new LineChartDataset
-            {
-                Label = "Lượt chơi game",
-                Data = TotalPlayCount,
-                BackgroundColor = colors[6], // Different color for the play count dataset
-                BorderColor = colors[6],
-                BorderWidth = 2,
-                HoverBorderWidth = 4
-            }
-        };
-
-        // Chart data setup for Sales
-        chartDataSales = new ChartData { Labels = labels, Datasets = datasetsSales };
-
-        // Chart data setup for Orders
-        chartDataOrders = new ChartData { Labels = labels, Datasets = datasetsOrders };
-
-        // Chart data setup for Plays
-        chartDataPlays = new ChartData { Labels = labels, Datasets = datasetsPlays };
-
-        lineChartOptions = new();
-        lineChartOptions.Responsive = true;
-        lineChartOptions.Interaction = new Interaction { Mode = InteractionMode.Index };
-
-        lineChartOptions.Scales.X!.Title = new ChartAxesTitle { Text = "2025", Display = false };
-        lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "Biểu Đồ", Display = false };
-
-        // lineChartOptions.Plugins.Title!.Text = "Tổng doanh thu";
-        // lineChartOptions.Plugins.Title.Display = true;
-    }
-
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -551,7 +462,7 @@
             csvContent.AppendLine($"{_metrics.IndexOf(metricDetail) + 1}," +
                               $"{metricDetail.Location}," +
                               $"{metricDetail.PGName}," +
-                          $"{metricDetail.TotalSales}," +
+                              $"{metricDetail.TotalSales}," +
                               $"{metricDetail.GamePlayCount}," +
                               $"{metricDetail.SalesPerGamePlay}");
         }
@@ -568,55 +479,86 @@
         await JSRuntime.InvokeVoidAsync("downloadCsvFile", "OrderDetails.csv", csvData);
     }
 
-    private void ApplyFilter()
+    private async Task ApplyFilter()
     {
-        IQueryable<RewardOrderDetail> query = context.RewardOrderDetails
-            .Include(c => c.RewardOrder)
-            .ThenInclude(ro => ro.Products)
-            .Include(c => c.RewardOrder)
-            .ThenInclude(ro => ro.Campaign)
-            .Include(c => c.RewardOrder)
-            .ThenInclude(ro => ro.Pg);
-
-        if (!string.IsNullOrWhiteSpace(_filterQuery))
-        {
-            query = query.Where(p =>
-                (p.GiftName != null && p.GiftName.ToLower().Contains(_filterQuery.ToLower())) ||
-                p.Id.ToString().ToLower().Contains(_filterQuery.ToLower()) ||
-                (p.RewardOrder != null && (
-                    (p.RewardOrder.CustomerName != null && p.RewardOrder.CustomerName.ToLower().Contains(_filterQuery.ToLower())) ||
-                    (p.RewardOrder.CustomerPhone != null && p.RewardOrder.CustomerPhone.Contains(_filterQuery))
-                )));
-        }
+        var query = context.RewardOrders
+                .Include(ro => ro.Pg)  // Assuming this is needed for the join
+                .Include(ro => ro.Products)
+                .Include(ro => ro.Details)
+                .Where(ro => ro.PgId != null);  // Ensures we're not including null PG entries
 
         if (_startDate.HasValue)
         {
             var utcStartDate = DateTime.SpecifyKind(_startDate.Value.Date, DateTimeKind.Utc);
-            query = query.Where(p => p.CreatedAt >= utcStartDate);
+            query = query.Where(p => p.CreatedAt >= utcStartDate); // Filter based on CreatedAt
         }
 
         if (_endDate.HasValue)
         {
             var utcEndDate = DateTime.SpecifyKind(_endDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
-            query = query.Where(p => p.CreatedAt <= utcEndDate);
-        }
-
-        if (!string.IsNullOrEmpty(_selectedPgId))
-        {
-            query = query.Where(p => p.RewardOrder.PgId == int.Parse(_selectedPgId));
+            query = query.Where(p => p.CreatedAt <= utcEndDate); // Filter based on CreatedAt
         }
 
         var skip = pagination.ItemsPerPage * pagination.CurrentPageIndex;
+        query = query.Skip(skip).Take(pagination.ItemsPerPage);
 
-        // _metrics = query
-        //     .OrderByDescending(p => p.CreatedAt)
-        //     .Skip(skip)
-        //     .Take(pagination.ItemsPerPage)
-        //     .ToList();
+        var pgSummary = await query
+            .GroupBy(o => new { o.Pg.AddressText, o.Pg.FirstName, o.Pg.LastName })
+            .Select(g => new PGSummaryViewModel
+                {
+                    Location = g.Key.AddressText,
+                    PGName = $"{g.Key.FirstName} {g.Key.LastName}",
+                    PurchaseCount = g.Count(),
+                    TotalSales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
+                    GamePlayCount = g.SelectMany(x => x.Details).Where(p => p.Status == 2).Count(),
+                    SalesPerGamePlay = g.Count() > 0 ?
+                                            ((g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity)) / g.Count()) : 0
+                })
+            .OrderByDescending(u => u.TotalSales)
+            .ToListAsync();
 
+        foreach (var summary in pgSummary)
+        {
+            var monthlySales = context.RewardOrders
+                .Where(ro => ro.PgId != null)
+                .GroupBy(ro => new { ro.CreatedAt.Year, ro.CreatedAt.Month })
+                .Select(g => new
+                {
+                    Month = g.Key.Month,
+                    Sales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
+                    Orders = g.Count(),
+                    PlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2)
+                })
+                .ToList();
+
+            foreach (var monthlySale in monthlySales)
+            {
+                var month = monthlySale.Month;
+
+                if (monthlySale.Sales > 0)
+                {
+                    summary.MonthlySales[month] = monthlySale.Sales;
+                    TotalOrderPrices[month - 1] = (double?)summary.MonthlySales[month];
+                }
+
+                summary.MonthlyOrders[month] = monthlySale.Orders;
+                TotalPlayCount[month - 1] = summary.MonthlyPlayCount[month];
+                summary.MonthlyPlayCount[month] = monthlySale.PlayCount;
+                TotalOrders[month - 1] = summary.MonthlyOrders[month];
+            }
+        }
+
+        // Update the metrics with filtered data
+        _metrics = pgSummary;
+
+        // Calculate total records for pagination
         TotalRecords = query.Count();
+
+        // Close filter modal
         HideFilterModal();
+        StateHasChanged(); // Trigger a re-render to reflect changes
     }
+
 
     private async Task UpdateUrlParameters()
     {
@@ -631,9 +573,6 @@
         if (_endDate.HasValue)
             parameters.Add("endDate", _endDate.Value.ToString("yyyy-MM-dd"));
 
-        if (!string.IsNullOrEmpty(_selectedPgId))
-            parameters.Add("pgId", _selectedPgId);
-
         var uri = NavigationManager.GetUriWithQueryParameters(parameters);
         NavigationManager.NavigateTo(uri);
     }
@@ -644,15 +583,79 @@
         ApplyFilter();
     }
 
-    // protected override async Task OnParametersSetAsync()
-    // {
-    //     _filterQuery = Query ?? "";
-    //     _startDate = !string.IsNullOrEmpty(StartDate) ? DateTime.Parse(StartDate) : null;
-    //     _endDate = !string.IsNullOrEmpty(EndDate) ? DateTime.Parse(EndDate) : null;
-    //     _selectedPgId = PgId ?? "";
+    protected override async Task OnParametersSetAsync()
+    {
+        _startDate = !string.IsNullOrEmpty(StartDate) ? DateTime.Parse(StartDate) : null;
+        _endDate = !string.IsNullOrEmpty(EndDate) ? DateTime.Parse(EndDate) : null;
+        ApplyFilter();
+    }
 
-    //     ApplyFilter();
-    // }
+    protected override void OnInitialized()
+    {
+
+        var colors = ColorUtility.CategoricalTwelveColors;
+
+        var labels = new List<string> { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
+        // var datasets = new List<IChartDataset>();
+
+        var datasetsSales = new List<IChartDataset>
+        {
+            new LineChartDataset
+            {
+                Label = "Tổng doanh thu",
+                Data = TotalOrderPrices,
+                BackgroundColor = colors[2],
+                BorderColor = colors[2],
+                BorderWidth = 2,
+                HoverBorderWidth = 4
+            }
+        };
+
+        var datasetsOrders = new List<IChartDataset>
+        {
+            new LineChartDataset
+            {
+                Label = "Lượt đặt hàng",
+                Data = TotalOrders,
+                BackgroundColor = colors[4], // Different color for the orders dataset
+                BorderColor = colors[4],
+                BorderWidth = 2,
+                HoverBorderWidth = 4
+            }
+        };
+
+        var datasetsPlays = new List<IChartDataset>
+        {
+            new LineChartDataset
+            {
+                Label = "Lượt chơi game",
+                Data = TotalPlayCount,
+                BackgroundColor = colors[6], // Different color for the play count dataset
+                BorderColor = colors[6],
+                BorderWidth = 2,
+                HoverBorderWidth = 4
+            }
+        };
+
+        // Chart data setup for Sales
+        chartDataSales = new ChartData { Labels = labels, Datasets = datasetsSales };
+
+        // Chart data setup for Orders
+        chartDataOrders = new ChartData { Labels = labels, Datasets = datasetsOrders };
+
+        // Chart data setup for Plays
+        chartDataPlays = new ChartData { Labels = labels, Datasets = datasetsPlays };
+
+        lineChartOptions = new();
+        lineChartOptions.Responsive = true;
+        lineChartOptions.Interaction = new Interaction { Mode = InteractionMode.Index };
+
+        lineChartOptions.Scales.X!.Title = new ChartAxesTitle { Text = "2025", Display = false };
+        lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "Biểu Đồ", Display = false };
+
+        // lineChartOptions.Plugins.Title!.Text = "Tổng doanh thu";
+        // lineChartOptions.Plugins.Title.Display = true;
+    }
 
     public async ValueTask DisposeAsync()
     {
