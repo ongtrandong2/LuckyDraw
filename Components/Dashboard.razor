@@ -481,27 +481,28 @@
 
     private async Task ApplyFilter()
     {
+        // Start with the base query (in this case, RewardOrders)
         var query = context.RewardOrders
-                .Include(ro => ro.Pg)  // Assuming this is needed for the join
-                .Include(ro => ro.Products)
-                .Include(ro => ro.Details)
-                .Where(ro => ro.PgId != null);  // Ensures we're not including null PG entries
+            .Include(ro => ro.Pg)  // Assuming this is needed for the join
+            .Include(ro => ro.Products)
+            .Include(ro => ro.Details)
+            .Where(ro => ro.PgId != null);  // Ensures we're not including null PG entries
 
+        // Apply start date filter if provided
         if (_startDate.HasValue)
         {
             var utcStartDate = DateTime.SpecifyKind(_startDate.Value.Date, DateTimeKind.Utc);
             query = query.Where(p => p.CreatedAt >= utcStartDate); // Filter based on CreatedAt
         }
 
+        // Apply end date filter if provided
         if (_endDate.HasValue)
         {
             var utcEndDate = DateTime.SpecifyKind(_endDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
             query = query.Where(p => p.CreatedAt <= utcEndDate); // Filter based on CreatedAt
         }
 
-        var skip = pagination.ItemsPerPage * pagination.CurrentPageIndex;
-        query = query.Skip(skip).Take(pagination.ItemsPerPage);
-
+        // Execute the query and retrieve the filtered data
         var pgSummary = await query
             .GroupBy(o => new { o.Pg.AddressText, o.Pg.FirstName, o.Pg.LastName })
             .Select(g => new PGSummaryViewModel
@@ -512,51 +513,23 @@
                     TotalSales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
                     GamePlayCount = g.SelectMany(x => x.Details).Where(p => p.Status == 2).Count(),
                     SalesPerGamePlay = g.Count() > 0 ?
-                                            ((g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity)) / g.Count()) : 0
+                                        ((g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity)) / g.Count()) : 0
                 })
             .OrderByDescending(u => u.TotalSales)
+            .Skip(pagination.CurrentPageIndex * pagination.ItemsPerPage)
+            .Take(pagination.ItemsPerPage)
             .ToListAsync();
 
-        foreach (var summary in pgSummary)
-        {
-            var monthlySales = context.RewardOrders
-                .Where(ro => ro.PgId != null)
-                .GroupBy(ro => new { ro.CreatedAt.Year, ro.CreatedAt.Month })
-                .Select(g => new
-                {
-                    Month = g.Key.Month,
-                    Sales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
-                    Orders = g.Count(),
-                    PlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2)
-                })
-                .ToList();
+        _metrics = pgSummary; // Store the filtered summary data
 
-            foreach (var monthlySale in monthlySales)
-            {
-                var month = monthlySale.Month;
+        // Update TotalRecords for pagination (this should be done after the filter query is applied)
+        TotalRecords = await query.CountAsync(); // Get the total number of records for pagination
 
-                if (monthlySale.Sales > 0)
-                {
-                    summary.MonthlySales[month] = monthlySale.Sales;
-                    TotalOrderPrices[month - 1] = (double?)summary.MonthlySales[month];
-                }
+        // Optionally, trigger a re-render to update the UI
+        StateHasChanged();
 
-                summary.MonthlyOrders[month] = monthlySale.Orders;
-                TotalPlayCount[month - 1] = summary.MonthlyPlayCount[month];
-                summary.MonthlyPlayCount[month] = monthlySale.PlayCount;
-                TotalOrders[month - 1] = summary.MonthlyOrders[month];
-            }
-        }
-
-        // Update the metrics with filtered data
-        _metrics = pgSummary;
-
-        // Calculate total records for pagination
-        TotalRecords = query.Count();
-
-        // Close filter modal
+        // Hide the filter modal
         HideFilterModal();
-        StateHasChanged(); // Trigger a re-render to reflect changes
     }
 
 
@@ -564,8 +537,6 @@
     {
         var parameters = new Dictionary<string, object?>();
 
-        if (!string.IsNullOrEmpty(_filterQuery))
-            parameters.Add("query", _filterQuery);
 
         if (_startDate.HasValue)
             parameters.Add("startDate", _startDate.Value.ToString("yyyy-MM-dd"));
