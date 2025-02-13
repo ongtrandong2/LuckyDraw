@@ -76,6 +76,30 @@
         </div>
     </div>
 
+</div>
+<div class="row g-5">
+    <div class="col-md-6">
+       
+    </div>
+</div>
+<div class="d-flex flex-wrap justify-content-between">
+    @* Biểu đồ Tổng số đơn hàng *@
+    <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+        <LineChart @ref="lineChartSales" Width="400" />
+    </div>
+
+      @* Biểu đồ Lượt đặt hàng *@
+      <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+          <LineChart @ref="lineChartOrders" Width="400" />
+      </div>
+
+      @* Biểu đồ Lượt chơi game *@
+      <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+          <LineChart @ref="lineChartPlays" Width="400" />
+      </div>
+</div>
+
+<div>
     <div class="flex-fill text-end">
         <button class="btn btn-light mx-2" @onclick="() => ShowFilterModal()">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -110,28 +134,18 @@
             </span>
         </button>
     </div>
-</div>
-<div class="row g-5">
-    <div class="col-md-6">
-       
+    <div class="table-responsive flex-fill">
+        <QuickGrid Class="table table-pg-admin table-hover align-middle" Items="_metrics.AsQueryable()">
+            <PropertyColumn Property="metric => metric.Location" Title="Địa điểm" />
+            <PropertyColumn Property="metric => metric.PGName" Title="PG" />
+            <PropertyColumn Property="metric => metric.PurchaseCount" Title="Lượt Mua hàng" />
+            <PropertyColumn Property="metric => metric.TotalSales" Title="Doanh số" />
+            <PropertyColumn Property="metric => metric.GamePlayCount" Title="Lượt chơi game" />
+            <PropertyColumn Property="metric => metric.SalesPerGamePlay" Title="Doanh số trên lượt chơi" Format="C2" />
+        </QuickGrid>
     </div>
 </div>
 
-@* Biểu đồ Tổng số đơn hàng *@
-<div class="container-fluid overflow-x-auto">
-    <LineChart @ref="lineChart" Width="800" />
-</div>
-
-<div class="table-responsive flex-fill">
-    <QuickGrid Class="table table-pg-admin table-hover align-middle" Items="_metrics.AsQueryable()">
-        <PropertyColumn Property="metric => metric.Location" Title="Địa điểm" />
-        <PropertyColumn Property="metric => metric.PGName" Title="PG" />
-        <PropertyColumn Property="metric => metric.PurchaseCount" Title="Lượt Mua hàng" />
-        <PropertyColumn Property="metric => metric.TotalSales" Title="Doanh số" />
-        <PropertyColumn Property="metric => metric.GamePlayCount" Title="Lượt chơi game" />
-        <PropertyColumn Property="metric => metric.SalesPerGamePlay" Title="Doanh số trên lượt chơi" Format="C2" />
-    </QuickGrid>
-</div>
 
 <div class="table-pg-admin-pagination">
     <PaginationHelper TotalRecords="TotalRecords"
@@ -207,6 +221,62 @@
         public decimal TotalSales { get; set; }
         public int GamePlayCount { get; set; }
         public decimal SalesPerGamePlay { get; set; }
+
+        // Dictionary to hold sales by month
+        public Dictionary<int, decimal> MonthlySales { get; set; }
+        public Dictionary<int, double> MonthlyOrders { get; set; }
+        public Dictionary<int, double> MonthlyPlayCount { get; set; }
+
+        public PGSummaryViewModel()
+        {
+            MonthlySales = new Dictionary<int, decimal>
+        {
+            { 1, 0m },
+            { 2, 0m },
+            { 3, 0m },
+            { 4, 0m },
+            { 5, 0m },
+            { 6, 0m },
+            { 7, 0m },
+            { 8, 0m },
+            { 9, 0m },
+            { 10, 0m },
+            { 11, 0m },
+            { 12, 0m }
+        };
+            MonthlyOrders = new Dictionary<int, double>
+                {
+                    { 1, 0 },
+                    { 2, 0 },
+                    { 3, 0 },
+                    { 4, 0 },
+                    { 5, 0 },
+                    { 6, 0 },
+                    { 7, 0 },
+                    { 8, 0 },
+                    { 9, 0 },
+                    { 10, 0 },
+                    { 11, 0 },
+                    { 12, 0 }
+
+                };
+            MonthlyPlayCount = new Dictionary<int, double>
+                {
+                    { 1, 0 },
+                    { 2, 0 },
+                    { 3, 0 },
+                    { 4, 0 },
+                    { 5, 0 },
+                    { 6, 0 },
+                    { 7, 0 },
+                    { 8, 0 },
+                    { 9, 0 },
+                    { 10, 0 },
+                    { 11, 0 },
+                    { 12, 0 }
+
+                };
+        }
     }
     private List<PGSummaryViewModel> _metrics = new();
     private string _search = "";
@@ -220,63 +290,19 @@
     private List<PG> _pgs = new();
 
 
-    private LineChart lineChart = default!;
+
+    private LineChart lineChartSales = default!;
+    private LineChart lineChartOrders = default!;
+    private LineChart lineChartPlays = default!;
+
+    private ChartData chartDataSales = default!;
+    private ChartData chartDataOrders = default!;
+    private ChartData chartDataPlays = default!;
     private LineChartOptions lineChartOptions = default!;
-    private ChartData chartData = default!;
 
-    private List<double?> TotalOrderPrices { get; set; } = new List<double?>();
-
-
-    protected override void OnInitialized()
-    {
-      
-        var colors = ColorUtility.CategoricalTwelveColors;
-
-        var labels = new List<string> { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
-        var datasets = new List<IChartDataset>();
-
-        foreach (var item in _metrics)
-        {
-            TotalOrderPrices.Add((double)item.TotalSales);
-        }
-
-        var dataset3 = new LineChartDataset
-            {
-                Label = "Other",
-                Data = TotalOrderPrices, // Chuyển đổi danh sách sang List<double?>
-                BackgroundColor = colors[2],
-                BorderColor = colors[2],
-                BorderWidth = 2,
-                HoverBorderWidth = 4,
-                // PointBackgroundColor = colors[2],
-                // PointRadius = 0, // hide points
-                // PointHoverRadius = 4,
-            };
-        datasets.Add(dataset3);
-
-        chartData = new ChartData { Labels = labels, Datasets = datasets };
-
-        lineChartOptions = new();
-        lineChartOptions.Responsive = true;
-        lineChartOptions.Interaction = new Interaction { Mode = InteractionMode.Index };
-
-        lineChartOptions.Scales.X!.Title = new ChartAxesTitle { Text = "2025", Display = true };
-        lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "Tổng doanh thu", Display = true };
-
-        lineChartOptions.Plugins.Title!.Text = "Tổng doanh thu";
-        lineChartOptions.Plugins.Title.Display = true;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await lineChart.InitializeAsync(chartData, lineChartOptions);
-        }
-        await base.OnAfterRenderAsync(firstRender);
-    }
-
-
+    private List<double?> TotalOrderPrices { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    private List<double?> TotalPlayCount { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    private List<double?> TotalOrders { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
     protected override async Task OnInitializedAsync()
     {
@@ -286,37 +312,180 @@
             .Include(pg => pg.Pg)
             .Include(ro => ro.Products)
             .Include(d => d.Details)
-            .Where(x => x.PgId != null ) // Không lấy dòng có PG null(DB hiện đang tồn tại dòng có PG null)
+            .Where(x => x.PgId != null) // Không lấy dòng có PG null(DB hiện đang tồn tại dòng có PG null)
             .GroupBy(o => new { o.Pg.AddressText, o.Pg.FirstName, o.Pg.LastName })
             .Select(g => new PGSummaryViewModel
                 {
                     Location = g.Key.AddressText,
                     PGName = $"{g.Key.FirstName} {g.Key.LastName}",
-                    PurchaseCount =g.Count(),
+                    PurchaseCount = g.Count(),
                     TotalSales = g
-                            .SelectMany(ro => ro.Products)
-                            .Sum(p => p.Price * p.Quantity), // Calculate total sales from RewardOrderProducts
+                                .SelectMany(ro => ro.Products)
+                                .Sum(p => p.Price * p.Quantity), // Calculate total sales from RewardOrderProducts
                     GamePlayCount = g.SelectMany(x => x.Details).Where(p => p.Status == 2).Count(),
-                    SalesPerGamePlay = g.Count() > 0 ?  
-                                            ((g.SelectMany(ro => ro.Products)
-                                            .Sum(p => p.Price * p.Quantity)) / g.Count()
-                                        ) : 0// Calculate total sales from RewardOrderProducts
+                    SalesPerGamePlay = g.Count() > 0 ?
+                                                ((g.SelectMany(ro => ro.Products)
+                                                .Sum(p => p.Price * p.Quantity)) / g.Count()
+                                            ) : 0// Calculate total sales from RewardOrderProducts
                 })
             .OrderByDescending(u => u.TotalSales)
             .Skip(pagination.CurrentPageIndex * pagination.ItemsPerPage)
             .Take(pagination.ItemsPerPage)
             .ToListAsync();
 
-        _metrics = pgSummary;    
+
+        foreach (var summary in pgSummary)
+        {
+            var monthlySales = context.RewardOrders
+                .Where(ro => ro.PgId != null)
+                .GroupBy(ro => new { ro.CreatedAt.Year, ro.CreatedAt.Month }) // Group by Year and Month
+                .Select(g => new
+                {
+                    Month = g.Key.Month,
+                    Year = g.Key.Year,
+                    Sales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
+                    Orders = g.Count(),  // Count the number of orders for the month
+                    PlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2)  // Count the game plays (status 2)
+                })
+                .ToList();
+
+            // Add sales, order count, and play count to the respective dictionaries
+            foreach (var monthlySale in monthlySales)
+            {
+                var month = monthlySale.Month;
+
+                // Update MonthlySales with the sales data
+                if (monthlySale.Sales > 0)
+                {
+                    summary.MonthlySales[month] += monthlySale.Sales;
+                }
+
+                // Update MonthlyOrders with the order count
+                summary.MonthlyOrders[month] += monthlySale.Orders;
+
+                // Update MonthlyPlayCount with the game play count
+                summary.MonthlyPlayCount[month] += monthlySale.PlayCount;
+            }
+        }
+
+
+        foreach (var summary in pgSummary)
+        {
+            Console.WriteLine($"Location: {summary.Location}, PG Name: {summary.PGName}");
+            Console.WriteLine($"Purchase Count: {summary.PurchaseCount}, Total Sales: {summary.TotalSales}, Game Play Count: {summary.GamePlayCount}, Sales per Game Play: {summary.SalesPerGamePlay}");
+            Console.WriteLine("Monthly Sales:");
+            for (int i = 1; i <= 12; i++)
+            {
+                TotalOrderPrices[i - 1] = (double)summary.MonthlySales[i];
+                TotalPlayCount[i - 1] = summary.MonthlyPlayCount[i];
+                TotalOrders[i - 1] = summary.MonthlyOrders[i];
+            }
+            // Console.WriteLine("Total Order Prices:");
+            foreach (var item in TotalOrderPrices)
+            {
+                Console.WriteLine($"{item}");
+            }
+            Console.WriteLine();  // Print a blank line between each PGSummary
+        }
+        _metrics = pgSummary;
     }
 
+
+    protected override void OnInitialized()
+    {
+
+        var colors = ColorUtility.CategoricalTwelveColors;
+
+        var labels = new List<string> { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
+        // var datasets = new List<IChartDataset>();
+
+        var datasetsSales = new List<IChartDataset>
+        {
+            new LineChartDataset
+            {
+                Label = "Tổng doanh thu",
+                Data = TotalOrderPrices,
+                BackgroundColor = colors[2],
+                BorderColor = colors[2],
+                BorderWidth = 2,
+                HoverBorderWidth = 4
+            }
+        };
+
+        var datasetsOrders = new List<IChartDataset>
+        {
+            new LineChartDataset
+            {
+                Label = "Lượt đặt hàng",
+                Data = TotalOrders,
+                BackgroundColor = colors[4], // Different color for the orders dataset
+                BorderColor = colors[4],
+                BorderWidth = 2,
+                HoverBorderWidth = 4
+            }
+        };
+
+        var datasetsPlays = new List<IChartDataset>
+        {
+            new LineChartDataset
+            {
+                Label = "Lượt chơi game",
+                Data = TotalPlayCount,
+                BackgroundColor = colors[6], // Different color for the play count dataset
+                BorderColor = colors[6],
+                BorderWidth = 2,
+                HoverBorderWidth = 4
+            }
+        };
+
+        // Chart data setup for Sales
+        chartDataSales = new ChartData { Labels = labels, Datasets = datasetsSales };
+
+        // Chart data setup for Orders
+        chartDataOrders = new ChartData { Labels = labels, Datasets = datasetsOrders };
+
+        // Chart data setup for Plays
+        chartDataPlays = new ChartData { Labels = labels, Datasets = datasetsPlays };
+
+        lineChartOptions = new();
+        lineChartOptions.Responsive = true;
+        lineChartOptions.Interaction = new Interaction { Mode = InteractionMode.Index };
+
+        lineChartOptions.Scales.X!.Title = new ChartAxesTitle { Text = "2025", Display = false };
+        lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "Biểu Đồ", Display = false };
+
+        // lineChartOptions.Plugins.Title!.Text = "Tổng doanh thu";
+        // lineChartOptions.Plugins.Title.Display = true;
+    }
+
+    // This method will be called when data changes
+    private void UpdateData()
+    {
+        // Re-render the chart
+        StateHasChanged(); // Notify the component to re-render
+        lineChartSales.InitializeAsync(chartDataSales, lineChartOptions);
+        lineChartOrders.InitializeAsync(chartDataOrders, lineChartOptions);
+        lineChartPlays.InitializeAsync(chartDataPlays, lineChartOptions);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Initialize charts on the first render
+            await lineChartSales.InitializeAsync(chartDataSales, lineChartOptions);
+            await lineChartOrders.InitializeAsync(chartDataOrders, lineChartOptions);
+            await lineChartPlays.InitializeAsync(chartDataPlays, lineChartOptions);
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
 
 
     private List<PageHeader.BreadcrumbItem> GetBreadcrumbs()
     {
         return new List<PageHeader.BreadcrumbItem>
         {
-            new() { Name = "Báo cáo chi tiết", Url = "/report" }
+            new() { Name = "Báo cáo chi tiết", Url = "/reports" }
         };
     }
 
@@ -329,9 +498,6 @@
     {
         _showFilterModal = false;
     }
-
-
-
 
     public async ValueTask DisposeAsync()
     {
