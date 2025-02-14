@@ -140,28 +140,48 @@
        
     </div>
 </div>
-<div class="d-flex flex-wrap justify-content-between">
-    @* Biểu đồ Tổng số đơn hàng *@
-    <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-        <LineChart @ref="lineChartSales" Width="400" />
+<div>
+    <div class="flex-fill text-end">
+        <button class="btn btn-light mx-2" @onclick="() => ShowFilterModal2()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 6H10" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M3 12H12" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M19 12H21" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M14 6L21 6" stroke="#16151C" stroke-width="1.5" stroke-linecap="round"
+                      stroke-linejoin="round" />
+                <path d="M13 18H20" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M3 18H6" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="8" cy="18" r="2" stroke="#16151C" stroke-width="1.5" />
+                <circle cx="17" cy="12" r="2" stroke="#16151C" stroke-width="1.5" />
+                <circle cx="12" cy="6" r="2" stroke="#16151C" stroke-width="1.5" />
+            </svg>
+            <span class="ms-1">
+                Filter
+            </span>
+        </button>
     </div>
 
-      @* Biểu đồ Lượt đặt hàng *@
-      <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-          <LineChart @ref="lineChartOrders" Width="400" />
-      </div>
+    <div class="d-flex flex-wrap justify-content-between">
+        @* Biểu đồ Tổng số đơn hàng *@
+        <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+            <LineChart @ref="lineChartSales" Width="400" />
+        </div>
 
-      @* Biểu đồ Lượt chơi game *@
-      <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-          <LineChart @ref="lineChartPlays" Width="400" />
-      </div>
+        @* Biểu đồ Lượt đặt hàng *@
+        <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+            <LineChart @ref="lineChartOrders" Width="400" />
+        </div>
+
+        @* Biểu đồ Lượt chơi game *@
+        <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+            <LineChart @ref="lineChartPlays" Width="400" />
+        </div>
+    </div>
 </div>
+
 
 <div>
     <div class="my-4 d-flex">
-        <div class="flex-fill input-wrapper">
-            <SearchInput OnSearch="HandleSearch" />
-        </div>
         <div class="flex-fill" />
         <div class="flex-fill text-end">
             <button class="btn btn-light mx-2" @onclick="() => ShowFilterModal()">
@@ -222,6 +242,8 @@
                       OnItemsPerPageChanged="newPage => pagination.ItemsPerPage = newPage" />
 </div>
 
+
+
 @if (_showFilterModal)
 {
     <div class="modal fade modal-lg show d-block" tabindex="-1">
@@ -258,6 +280,56 @@
     </div>
     <div class="modal-backdrop fade show"></div>
 }
+@if (_showFilterModal2)
+{
+    <div class="modal fade modal-lg show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title ms-auto">Bộ lọc</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col col-12 fw-bold py-2">Tìm kiếm theo thời gian</div>
+
+                        <div class="mb-3 col col-12">
+                            <label class="form-label">Chọn loại thời gian</label>
+                            <select class="form-select" @bind="_timeUnit">
+                                <option value="month">Tháng</option>
+                                <option value="year">Năm</option>
+                            </select>
+                        </div>                
+                        @if (_timeUnit == "month")
+                        {
+                            <div class="mb-3 col col-6">
+                                <label class="form-label">Chọn tháng</label>
+                                <input type="month" class="form-control" @bind="_MonthFilter" />
+                            </div>
+                        }
+
+                        @if (_timeUnit == "year")
+                        {
+                            <div class="mb-3 col col-6">
+                                <label class="form-label">Chọn năm</label>
+                                <input type="number" class="form-control" @bind="_YearFilter" />
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-light border px-4 bg-white" @onclick="HideFilterModal">Hủy bỏ</button>
+                    <button type="button" class="btn btn-primary px-4" @onclick="async () => {
+                        await ApplyFilterWithUrlUpdate();
+                    }">
+                        Áp dụng
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
 
 @code {
     private ApplicationDbContext context = default!;
@@ -331,9 +403,15 @@
     private int TotalRecords { get; set; }
     private readonly PaginationState pagination = new() { ItemsPerPage = 10 };
     private bool _showFilterModal;
+    private bool _showFilterModal2;
+
     private string _filterQuery = "";
     private DateTime? _startDate;
     private DateTime? _endDate;
+
+    private string _timeUnit = "year";
+    private DateTime? _MonthFilter;
+    private int? _YearFilter = DateTime.Now.Year;
 
     [SupplyParameterFromQuery]
     private string? StartDate { get; set; }
@@ -622,6 +700,30 @@
         await UpdateUrlParameters();
         ApplyFilter();
     }
+    private async Task ApplyFilterWithUrlUpdate2()
+    {
+        if (_timeUnit == "month")
+        {
+            // Lọc theo tháng
+            if (!date.IsNullOrEmpty(_MonthFilter))
+            {
+                // Thực hiện hành động lọc theo tháng
+            }
+        }
+        else if (_timeUnit == "year")
+        {
+            // Lọc theo năm
+            if (_YearFilter)
+            {
+                // Thực hiện hành động lọc theo năm
+            }
+        }
+
+        StateHasChanged();
+
+        // Hide the filter modal
+        HideFilterModal2();
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -713,6 +815,15 @@
     private void HideFilterModal()
     {
         _showFilterModal = false;
+    }
+    private void ShowFilterModal2()
+    {
+        _showFilterModal2 = true;
+    }
+
+    private void HideFilterModal2()
+    {
+        _showFilterModal2 = false;
     }
     private void UpdateDataInMetricCard(List<PGSummaryViewModel> metrics)
     {
