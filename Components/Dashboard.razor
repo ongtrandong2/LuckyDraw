@@ -66,9 +66,9 @@
 
             <!-- Tổng doanh thu -->
             <div class="col-md-4">
-                <MetricCard BackgroundColor="#fee2e2"
-                            IconBackgroundColor="#fecaca"
-                            IconColor="#b91c1c"
+                <MetricCard BackgroundColor="#ede9fe"
+                            IconBackgroundColor="#e9d5ff"
+                            IconColor="#6b21a8"
                             MetricValue="@(_metrics.Sum(x => x.TotalSales).ToString("N0") + " VNĐ")"
                             MetricLabel="Tổng doanh thu">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
@@ -82,9 +82,9 @@
 
             <!-- Tổng lượt chơi -->
             <div class="col-md-4">
-                <MetricCard BackgroundColor="#ede9fe"
-                            IconBackgroundColor="#e9d5ff"
-                            IconColor="#6b21a8"
+                <MetricCard BackgroundColor="#fee2e2"
+                            IconBackgroundColor="#fecaca"
+                            IconColor="#b91c1c"
                             MetricValue="@_metrics.Sum(x => x.GamePlayCount).ToString()"
                             MetricLabel="Lượt chơi game">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
@@ -98,7 +98,7 @@
                 <MetricCard BackgroundColor="#d1fae5"
                             IconBackgroundColor="#bbf7d0"
                             IconColor="#15803d"
-                            MetricValue="@ConversionRate.ToString()"
+                            MetricValue="@ConversionRate.ToString("N2")"
                             MetricLabel="Conversion rate">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h11M9 21v-6m0-6V3m-6 6h.01M3 17v-4m16 0V7m-6 6h.01" />
@@ -121,9 +121,9 @@
 
             <!-- AOV - Giá trị đơn trung bình -->
             <div class="col-md-4">
-                <MetricCard BackgroundColor="#ede9fe"
-                            IconBackgroundColor="#e9d5ff"
-                            IconColor="#6b21a8"
+                <MetricCard BackgroundColor="#fee2e2"
+                            IconBackgroundColor="#fecaca"
+                            IconColor="#b91c1c"
                             MetricValue="@(AverageTotalSales.ToString("N0") + " VNĐ")"
                             MetricLabel="AOV">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
@@ -141,44 +141,51 @@
     </div>
 </div>
 <div>
-    <div class="flex-fill text-end">
-        <button class="btn btn-light mx-2" @onclick="() => ShowFilterModal2()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 6H10" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M3 12H12" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M19 12H21" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M14 6L21 6" stroke="#16151C" stroke-width="1.5" stroke-linecap="round"
-                      stroke-linejoin="round" />
-                <path d="M13 18H20" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M3 18H6" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <circle cx="8" cy="18" r="2" stroke="#16151C" stroke-width="1.5" />
-                <circle cx="17" cy="12" r="2" stroke="#16151C" stroke-width="1.5" />
-                <circle cx="12" cy="6" r="2" stroke="#16151C" stroke-width="1.5" />
-            </svg>
-            <span class="ms-1">
-                Filter
-            </span>
-        </button>
+
+<div class="d-flex flex-wrap justify-content-between">
+    @* Biểu đồ Tổng số đơn hàng *@
+    <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+        <LineChart @ref="lineChartSales" Width="400" />
     </div>
 
-    <div class="d-flex flex-wrap justify-content-between">
-        @* Biểu đồ Tổng số đơn hàng *@
-        <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-            <LineChart @ref="lineChartSales" Width="400" />
-        </div>
+    @* Biểu đồ Lượt đặt hàng *@
+    <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+        <LineChart @ref="lineChartOrders" Width="400" />
+    </div>
 
-        @* Biểu đồ Lượt đặt hàng *@
-        <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-            <LineChart @ref="lineChartOrders" Width="400" />
-        </div>
+   
+</div>
+<div class="d-flex flex-wrap justify-content-between">
+    @* Biểu đồ Lượt chơi game *@
+    <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+        <LineChart @ref="lineChartPlays" Width="400" />
+    </div>
 
-        @* Biểu đồ Lượt chơi game *@
-        <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-            <LineChart @ref="lineChartPlays" Width="400" />
-        </div>
+    @* Biểu đồ Tổng số lượt tiếp cận *@
+    <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+        <LineChart @ref="lineChartReach" Width="400" />
+    </div>
+</div>
+<div class="d-flex flex-wrap justify-content-between">
+    @* Biểu đồ Conversiton Rate *@
+    <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+        <LineChart @ref="lineChartConversionRates" Width="400" />
+    </div>
+
+    @* Biểu đồ Doanh số/Lượt tiếp cận *@
+    <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+        <LineChart @ref="lineChartPerformances" Width="400" />
     </div>
 </div>
 
+<div class="d-flex flex-wrap justify-content-between">
+
+    @* Biểu đồ AOV(Giá trị đơn trung bình) *@
+    <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
+        <LineChart @ref="lineChartAverageTotal" Width="400" />
+    </div>
+</div>
+</div>
 
 <div>
     <div class="my-4 d-flex">
@@ -225,10 +232,16 @@
         <QuickGrid Class="table table-pg-admin table-hover align-middle" Items="_metrics.AsQueryable()">
             <PropertyColumn Property="metric => metric.Location" Title="Địa điểm" />
             <PropertyColumn Property="metric => metric.PGName" Title="PG" />
+
             <PropertyColumn Property="metric => metric.PurchaseCount" Title="Lượt Mua hàng" />
-            <PropertyColumn Property="metric => metric.TotalSales" Title="Doanh số" />
+            <PropertyColumn Property="metric => metric.Reach" Title="Lượt tiếp cận" />
             <PropertyColumn Property="metric => metric.GamePlayCount" Title="Lượt chơi game" />
-            <PropertyColumn Property="metric => metric.SalesPerGamePlay" Title="Doanh số trên lượt chơi" Format="C2" />
+            <PropertyColumn Property="metric => metric.ConversionRate" Title="Conversion rate" />
+            <PropertyColumn Property="metric => metric.TotalSales" Title="Doanh số" />
+            <PropertyColumn Property="metric => metric.Performance" Title="Doanh số/lượt tiếp cận" />
+            <PropertyColumn Property="metric => metric.SalesPerGamePlay" Title="Doanh số/lượt chơi" Format="C2" />
+
+            <PropertyColumn Property="metric => metric.AverageTotal" Title="AOV" />
         </QuickGrid>
     </div>
 </div>
@@ -342,10 +355,19 @@
         public int GamePlayCount { get; set; }
         public decimal SalesPerGamePlay { get; set; }
 
+        public int Reach { get; set; }
+        public decimal ConversionRate { get; set; }
+        public decimal Performance { get; set; }
+        public decimal AverageTotal { get; set; }
+
         // Dictionary to hold sales by month
         public Dictionary<int, decimal> MonthlySales { get; set; }
         public Dictionary<int, double> MonthlyOrders { get; set; }
         public Dictionary<int, double> MonthlyPlayCount { get; set; }
+        public Dictionary<int, double> MonthlyReach { get; set; }
+        public Dictionary<int, decimal> MonthlyConversionRate { get; set; }
+        public Dictionary<int, decimal> MonthlyPerformance { get; set; }
+        public Dictionary<int, decimal> MonthlyAverageTotal { get; set; }
 
         public PGSummaryViewModel()
         {
@@ -396,6 +418,70 @@
                     { 12, 0 }
 
                 };
+            MonthlyReach = new Dictionary<int, double>
+                {
+                    { 1, 0 },
+                    { 2, 0 },
+                    { 3, 0 },
+                    { 4, 0 },
+                    { 5, 0 },
+                    { 6, 0 },
+                    { 7, 0 },
+                    { 8, 0 },
+                    { 9, 0 },
+                    { 10, 0 },
+                    { 11, 0 },
+                    { 12, 0 }
+
+                };
+            MonthlyConversionRate = new Dictionary<int, decimal>
+                {
+                    { 1, 0 },
+                    { 2, 0 },
+                    { 3, 0 },
+                    { 4, 0 },
+                    { 5, 0 },
+                    { 6, 0 },
+                    { 7, 0 },
+                    { 8, 0 },
+                    { 9, 0 },
+                    { 10, 0 },
+                    { 11, 0 },
+                    { 12, 0 }
+
+                };
+            MonthlyPerformance = new Dictionary<int, decimal>
+                {
+                    { 1, 0 },
+                    { 2, 0 },
+                    { 3, 0 },
+                    { 4, 0 },
+                    { 5, 0 },
+                    { 6, 0 },
+                    { 7, 0 },
+                    { 8, 0 },
+                    { 9, 0 },
+                    { 10, 0 },
+                    { 11, 0 },
+                    { 12, 0 }
+
+                };
+            MonthlyAverageTotal = new Dictionary<int, decimal>
+                {
+                    { 1, 0 },
+                    { 2, 0 },
+                    { 3, 0 },
+                    { 4, 0 },
+                    { 5, 0 },
+                    { 6, 0 },
+                    { 7, 0 },
+                    { 8, 0 },
+                    { 9, 0 },
+                    { 10, 0 },
+                    { 11, 0 },
+                    { 12, 0 }
+
+                };
         }
     }
     private List<PGSummaryViewModel> _metrics = new();
@@ -424,15 +510,30 @@
     private LineChart lineChartSales = default!;
     private LineChart lineChartOrders = default!;
     private LineChart lineChartPlays = default!;
+    private LineChart lineChartAverageTotal = default!;
+    private LineChart lineChartReach = default!;
+    private LineChart lineChartConversionRates = default!;
+    private LineChart lineChartPerformances = default!;
 
     private ChartData chartDataSales = default!;
     private ChartData chartDataOrders = default!;
     private ChartData chartDataPlays = default!;
+    private ChartData chartDataAverageTotal = default!;
+    private ChartData chartDataReach = default!;
+    private ChartData chartDataConversionRates = default!;
+    private ChartData chartDataPerformances = default!;
+
     private LineChartOptions lineChartOptions = default!;
 
     private List<double?> TotalOrderPrices { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     private List<double?> TotalPlayCount { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     private List<double?> TotalOrders { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+    private List<double?> TotalAverageSales { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    private List<double?> TotalReach { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    private List<double?> TotalConversionRate { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    private List<double?> TotalPerformance { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
 
     public decimal AverageTotalSales { get; set; }
     public int ReachTotal { get; set; }
@@ -479,10 +580,16 @@
                                                     ((g.SelectMany(ro => ro.Products)
                                                     .Sum(p => p.Price * p.Quantity)) / g.Count()
                                                 ) : 0,// Calculate total sales from RewardOrderProducts
-                    // AverageTotalSales = g.Count() > 0 ?
-                    //                             (g.SelectMany(ro => ro.Products)
-                    //                             .Sum(p => p.Price * p.Quantity) / g.Count()
-                    //                         ) : 0
+                    Reach = g.Count(), //Lượt tiếp cận
+                    ConversionRate = g.Count() > 0 ?( g.Count() / g.Count()) : 0, // Lượt mua hàng / Lượt tiếp cận
+                    AverageTotal = g.Count() > 0 ?
+                                                (g.SelectMany(ro => ro.Products)
+                                                .Sum(p => p.Price * p.Quantity) / g.Count()
+                                            ) : 0, // Giá trị đơn trung bình
+                    Performance = g.Count() > 0 ?
+                        (g.SelectMany(ro => ro.Products)
+                        .Sum(p => p.Price * p.Quantity) / g.Count()) : 0, // Doanh số / Lượt tiếp cận - Tổng doanh số chia Tổng lượt tiếp cận
+
                 })
             .OrderByDescending(u => u.TotalSales)
             .Skip(pagination.CurrentPageIndex * pagination.ItemsPerPage)
@@ -500,7 +607,12 @@
                     Year = g.Key.Year,
                     Sales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
                     Orders = g.Count(),  // Count the number of orders for the month
-                    PlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2)  // Count the game plays (status 2)
+                    PlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2),  // Count the game plays (status 2)
+                    Reach = g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count(), //Lượt tiếp cận
+                    ConversionRate = g.Count() > 0 ? (g.Count() / g.Count()) : 0, // Lượt mua hàng / Lượt tiếp cận\
+                    AverageTotal = g.Count() > 0 ? (g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count()) : 0, // Giá trị đơn trung bình
+                    Performance = g.Count() > 0 ? (g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / 
+                                    g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count()) : 0, // Doanh số / Lượt tiếp cận - Tổng doanh số chia Tổng lượt tiếp cận
                 })
                 .ToList();
 
@@ -520,6 +632,19 @@
 
                 // Update MonthlyPlayCount with the game play count
                 summary.MonthlyPlayCount[month] += monthlySale.PlayCount;
+
+                // Update MonthlyReach 
+                summary.MonthlyReach[month] += monthlySale.Reach;
+
+                // Update MonthlyConversionRate
+                summary.MonthlyConversionRate[month] += monthlySale.ConversionRate;
+
+                // Update MonthlyAverageTotal
+
+                summary.MonthlyAverageTotal[month] += monthlySale.AverageTotal;
+
+                // Update MonthlyPerformance
+                summary.MonthlyPerformance[month] += monthlySale.Performance;
             }
         }
 
@@ -534,6 +659,11 @@
                 TotalOrderPrices[i - 1] = (double)summary.MonthlySales[i];
                 TotalPlayCount[i - 1] = summary.MonthlyPlayCount[i];
                 TotalOrders[i - 1] = summary.MonthlyOrders[i];
+
+                TotalAverageSales[i - 1] = (double)summary.MonthlyAverageTotal[i];
+                TotalReach[i - 1] = (double)summary.MonthlyReach[i];
+                TotalConversionRate[i - 1] = (double)summary.MonthlyConversionRate[i];
+                TotalPerformance[i - 1] = (double)summary.MonthlyPerformance[i];
             }
             // Console.WriteLine("Total Order Prices:");
             foreach (var item in TotalOrderPrices)
@@ -554,7 +684,11 @@
             // Initialize charts on the first render
             await lineChartSales.InitializeAsync(chartDataSales, lineChartOptions);
             await lineChartOrders.InitializeAsync(chartDataOrders, lineChartOptions);
-            await lineChartPlays.InitializeAsync(chartDataPlays, lineChartOptions);
+            await lineChartPlays.InitializeAsync(chartDataPlays, lineChartOptions); 
+            await lineChartAverageTotal.InitializeAsync(chartDataAverageTotal, lineChartOptions);
+            await lineChartConversionRates.InitializeAsync(chartDataConversionRates, lineChartOptions);
+            await lineChartPerformances.InitializeAsync(chartDataPerformances, lineChartOptions);
+            await lineChartReach.InitializeAsync(chartDataReach, lineChartOptions);
         }
         await base.OnAfterRenderAsync(firstRender);
     }
@@ -705,7 +839,7 @@
         if (_timeUnit == "month")
         {
             // Lọc theo tháng
-            if (!date.IsNullOrEmpty(_MonthFilter))
+            if (_MonthFilter.HasValue)
             {
                 // Thực hiện hành động lọc theo tháng
             }
@@ -713,7 +847,7 @@
         else if (_timeUnit == "year")
         {
             // Lọc theo năm
-            if (_YearFilter)
+            if (_YearFilter.HasValue)
             {
                 // Thực hiện hành động lọc theo năm
             }
@@ -778,6 +912,58 @@
             }
         };
 
+        var datasetsAverageTotal = new List<IChartDataset>
+        {
+            new LineChartDataset
+            {
+                Label = "Giá  trị đơn trung bình",
+                Data = TotalAverageSales,
+                BackgroundColor = colors[7], // Different color for the play count dataset
+                BorderColor = colors[7],
+                BorderWidth = 2,
+                HoverBorderWidth = 4
+            }
+        };
+
+        var datasetsReachs = new List<IChartDataset>
+        {
+            new LineChartDataset
+            {
+                Label = "Lượt tiếp cận",
+                Data = TotalReach,
+                BackgroundColor = colors[8], // Different color for the play count dataset
+                BorderColor = colors[8],
+                BorderWidth = 2,
+                HoverBorderWidth = 4
+            }
+        };
+
+        var datasetsConversionRates = new List<IChartDataset>
+        {
+            new LineChartDataset
+            {
+                Label = "Conversion Rate",
+                Data = TotalConversionRate,
+                BackgroundColor = colors[9], // Different color for the play count dataset
+                BorderColor = colors[9],
+                BorderWidth = 2,
+                HoverBorderWidth = 4
+            }
+        };
+
+        var datasetsPerformances = new List<IChartDataset>
+        {
+            new LineChartDataset
+            {
+                Label = "Doanh số / Lượt tiếp cận",
+                Data = TotalPerformance,
+                BackgroundColor = colors[10], // Different color for the play count dataset
+                BorderColor = colors[10],
+                BorderWidth = 2,
+                HoverBorderWidth = 4
+            }
+        };
+
         // Chart data setup for Sales
         chartDataSales = new ChartData { Labels = labels, Datasets = datasetsSales };
 
@@ -786,6 +972,19 @@
 
         // Chart data setup for Plays
         chartDataPlays = new ChartData { Labels = labels, Datasets = datasetsPlays };
+
+
+        // Chart data setup for Performance
+        chartDataPerformances = new ChartData { Labels = labels, Datasets = datasetsPerformances };
+
+        // Chart data setup for ConversionRate
+        chartDataConversionRates = new ChartData { Labels = labels, Datasets = datasetsConversionRates };
+
+        // Chart data setup for Reach
+        chartDataReach = new ChartData { Labels = labels, Datasets = datasetsReachs };
+
+        // Chart data setup for AverageTotal
+        chartDataAverageTotal = new ChartData { Labels = labels, Datasets = datasetsAverageTotal };
 
         lineChartOptions = new();
         lineChartOptions.Responsive = true;
@@ -805,6 +1004,10 @@
         await lineChartSales.UpdateAsync(chartDataSales, lineChartOptions);
         await lineChartOrders.UpdateAsync(chartDataOrders, lineChartOptions);
         await lineChartPlays.UpdateAsync(chartDataPlays, lineChartOptions);
+        await lineChartAverageTotal.UpdateAsync(chartDataAverageTotal, lineChartOptions);
+        await lineChartConversionRates.UpdateAsync(chartDataConversionRates, lineChartOptions);
+        await lineChartPerformances.UpdateAsync(chartDataPerformances, lineChartOptions);
+        await lineChartReach.UpdateAsync(chartDataReach, lineChartOptions);
         StateHasChanged(); // Notify the component to re-render
     }
     private void ShowFilterModal()
@@ -827,10 +1030,10 @@
     }
     private void UpdateDataInMetricCard(List<PGSummaryViewModel> metrics)
     {
-        AverageTotalSales = metrics.Sum(x => x.PurchaseCount) > 0 ? metrics.Sum(x => x.TotalSales) / metrics.Sum(x => x.PurchaseCount) : 0;
-        ReachTotal = metrics.Count();
-        ConversionRate = ReachTotal > 0 ? metrics.Sum(x => x.PurchaseCount) / ReachTotal : 0;
-        Performance = ReachTotal > 0 ? metrics.Sum(x => x.TotalSales) / ReachTotal : 0;
+        AverageTotalSales = (decimal)TotalAverageSales.Sum(x => x.Value);
+        ReachTotal = (int)TotalReach.Sum(x => x.Value);
+        ConversionRate = (decimal)(TotalOrders.Sum(x => x.Value) / TotalReach.Sum(x => x.Value));
+        Performance = (decimal)(TotalOrderPrices.Sum(x => x.Value) / TotalReach.Sum(x => x.Value));
     }
     public async ValueTask DisposeAsync()
     {
