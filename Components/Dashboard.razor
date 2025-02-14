@@ -74,6 +74,60 @@
                 </MetricCard>
             </div>
         </div>
+
+        <div class="row g-4 mt-1">
+            <!-- Tổng lượt tiếp cận -->
+            <div class="col-md-4">
+                <MetricCard BackgroundColor="#fee2e2"
+                            IconBackgroundColor="#fecaca"
+                            IconColor="#b91c1c"
+                            MetricValue="@ReachTotal.ToString()"
+                            MetricLabel="Tổng lượt tiếp cận">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10V5" />
+                    </svg>
+                </MetricCard>
+            </div>
+
+            <!-- Conversion rate -->
+            <div class="col-md-4">
+                <MetricCard BackgroundColor="#d1fae5"
+                            IconBackgroundColor="#bbf7d0"
+                            IconColor="#15803d"
+                            MetricValue="@ConversionRate.ToString()"
+                            MetricLabel="Conversion rate">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h11M9 21v-6m0-6V3m-6 6h.01M3 17v-4m16 0V7m-6 6h.01" />
+                    </svg>
+                </MetricCard>
+            </div>
+
+            <!-- Doanh số / lượt tiếp cận -->
+            <div class="col-md-4">
+                <MetricCard BackgroundColor="#ede9fe"
+                            IconBackgroundColor="#e9d5ff"
+                            IconColor="#6b21a8"
+                            MetricValue="@(Performance.ToString("N0") + " VNĐ")"
+                            MetricLabel="Doanh số/ lượt tiếp cận">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14h5m6 0v2m0-6h4m-4 0h-4" />
+                    </svg>
+                </MetricCard>
+            </div>
+
+            <!-- AOV - Giá trị đơn trung bình -->
+            <div class="col-md-4">
+                <MetricCard BackgroundColor="#ede9fe"
+                            IconBackgroundColor="#e9d5ff"
+                            IconColor="#6b21a8"
+                            MetricValue="@(AverageTotalSales.ToString("N0") + " VNĐ")"
+                            MetricLabel="AOV">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14h5m6 0v2m0-6h4m-4 0h-4" />
+                    </svg>
+                </MetricCard>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -304,8 +358,24 @@
     private List<double?> TotalPlayCount { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     private List<double?> TotalOrders { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
+    public decimal AverageTotalSales { get; set; }
+    public int ReachTotal { get; set; }
+    public decimal ConversionRate { get; set; }
+    public decimal Performance { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        await GetData();
+        UpdateData();
+    }
+
+    protected override void OnInitialized()
+    {
+        InitializeChartData();
+        StateHasChanged();
+    }
+
+    private async Task GetData(){
         context = DbFactory.CreateDbContext();
 
         var pgSummary = await context.RewardOrders
@@ -320,19 +390,22 @@
                     PGName = $"{g.Key.FirstName} {g.Key.LastName}",
                     PurchaseCount = g.Count(),
                     TotalSales = g
-                                .SelectMany(ro => ro.Products)
-                                .Sum(p => p.Price * p.Quantity), // Calculate total sales from RewardOrderProducts
+                                    .SelectMany(ro => ro.Products)
+                                    .Sum(p => p.Price * p.Quantity), // Calculate total sales from RewardOrderProducts
                     GamePlayCount = g.SelectMany(x => x.Details).Where(p => p.Status == 2).Count(),
                     SalesPerGamePlay = g.Count() > 0 ?
-                                                ((g.SelectMany(ro => ro.Products)
-                                                .Sum(p => p.Price * p.Quantity)) / g.Count()
-                                            ) : 0// Calculate total sales from RewardOrderProducts
+                                                    ((g.SelectMany(ro => ro.Products)
+                                                    .Sum(p => p.Price * p.Quantity)) / g.Count()
+                                                ) : 0,// Calculate total sales from RewardOrderProducts
+                    // AverageTotalSales = g.Count() > 0 ?
+                    //                             (g.SelectMany(ro => ro.Products)
+                    //                             .Sum(p => p.Price * p.Quantity) / g.Count()
+                    //                         ) : 0
                 })
             .OrderByDescending(u => u.TotalSales)
             .Skip(pagination.CurrentPageIndex * pagination.ItemsPerPage)
             .Take(pagination.ItemsPerPage)
             .ToListAsync();
-
 
         foreach (var summary in pgSummary)
         {
@@ -388,12 +461,16 @@
             Console.WriteLine();  // Print a blank line between each PGSummary
         }
         _metrics = pgSummary;
+        AverageTotalSales = _metrics.Sum(x => x.PurchaseCount) > 0 ? _metrics.Sum(x => x.TotalSales) / _metrics.Sum(x => x.PurchaseCount) : 0;
+        ReachTotal = _metrics.Count();
+        ConversionRate = ReachTotal > 0 ? _metrics.Sum(x => x.PurchaseCount) / ReachTotal : 0;
+        Performance = ReachTotal > 0 ? _metrics.Sum(x => x.TotalSales) / ReachTotal : 0;
+        //await InvokeAsync(StateHasChanged);
     }
 
-
-    protected override void OnInitialized()
+    // protected override void OnInitialized()
+    private void InitializeChartData()
     {
-
         var colors = ColorUtility.CategoricalTwelveColors;
 
         var labels = new List<string> { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
@@ -456,16 +533,17 @@
 
         // lineChartOptions.Plugins.Title!.Text = "Tổng doanh thu";
         // lineChartOptions.Plugins.Title.Display = true;
+        //UpdateData();
     }
 
     // This method will be called when data changes
-    private void UpdateData()
+    private async Task UpdateData()
     {
         // Re-render the chart
+        await lineChartSales.UpdateAsync(chartDataSales, lineChartOptions);
+        await lineChartOrders.UpdateAsync(chartDataOrders, lineChartOptions);
+        await lineChartPlays.UpdateAsync(chartDataPlays, lineChartOptions);
         StateHasChanged(); // Notify the component to re-render
-        lineChartSales.InitializeAsync(chartDataSales, lineChartOptions);
-        lineChartOrders.InitializeAsync(chartDataOrders, lineChartOptions);
-        lineChartPlays.InitializeAsync(chartDataPlays, lineChartOptions);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
