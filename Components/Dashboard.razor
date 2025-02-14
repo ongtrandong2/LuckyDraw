@@ -50,7 +50,7 @@
                 </MetricCard>
             </div>
 
-             <!-- Tổng lượt mua hàng -->
+            <!-- Tổng lượt mua hàng -->
             <div class="col-md-4">
                 <MetricCard BackgroundColor="#d1fae5"
                             IconBackgroundColor="#bbf7d0"
@@ -137,10 +137,9 @@
 </div>
 <div class="row g-5">
     <div class="col-md-6">
-       
     </div>
 </div>
-<div>
+
 
 <div class="d-flex flex-wrap justify-content-between">
     @* Biểu đồ Tổng số đơn hàng *@
@@ -153,7 +152,7 @@
         <LineChart @ref="lineChartOrders" Width="400" />
     </div>
 
-   
+
 </div>
 <div class="d-flex flex-wrap justify-content-between">
     @* Biểu đồ Lượt chơi game *@
@@ -185,10 +184,12 @@
         <LineChart @ref="lineChartAverageTotal" Width="400" />
     </div>
 </div>
-</div>
 
 <div>
     <div class="my-4 d-flex">
+        <div class="flex-fill input-wrapper">
+            <SearchInput OnSearch="HandleSearch" />
+        </div>
         <div class="flex-fill" />
         <div class="flex-fill text-end">
             <button class="btn btn-light mx-2" @onclick="() => ShowFilterModal()">
@@ -232,16 +233,10 @@
         <QuickGrid Class="table table-pg-admin table-hover align-middle" Items="_metrics.AsQueryable()">
             <PropertyColumn Property="metric => metric.Location" Title="Địa điểm" />
             <PropertyColumn Property="metric => metric.PGName" Title="PG" />
-
             <PropertyColumn Property="metric => metric.PurchaseCount" Title="Lượt Mua hàng" />
-            <PropertyColumn Property="metric => metric.Reach" Title="Lượt tiếp cận" />
-            <PropertyColumn Property="metric => metric.GamePlayCount" Title="Lượt chơi game" />
-            <PropertyColumn Property="metric => metric.ConversionRate" Title="Conversion rate" />
             <PropertyColumn Property="metric => metric.TotalSales" Title="Doanh số" />
-            <PropertyColumn Property="metric => metric.Performance" Title="Doanh số/lượt tiếp cận" />
-            <PropertyColumn Property="metric => metric.SalesPerGamePlay" Title="Doanh số/lượt chơi" Format="C2" />
-
-            <PropertyColumn Property="metric => metric.AverageTotal" Title="AOV" />
+            <PropertyColumn Property="metric => metric.GamePlayCount" Title="Lượt chơi game" />
+            <PropertyColumn Property="metric => metric.SalesPerGamePlay" Title="Doanh số trên lượt chơi" Format="C2" />
         </QuickGrid>
     </div>
 </div>
@@ -254,8 +249,6 @@
                      }"
                       OnItemsPerPageChanged="newPage => pagination.ItemsPerPage = newPage" />
 </div>
-
-
 
 @if (_showFilterModal)
 {
@@ -277,7 +270,7 @@
                             <input type="date" class="form-control" @bind="_endDate" />
                         </div>
                     </div>
-        
+
                 </div>
                 <div class="modal-footer border-top-0">
                     <button type="button" class="btn btn-light border px-4 bg-white" @onclick="HideFilterModal">Hủy bỏ</button>
@@ -293,56 +286,6 @@
     </div>
     <div class="modal-backdrop fade show"></div>
 }
-@if (_showFilterModal2)
-{
-    <div class="modal fade modal-lg show d-block" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header border-bottom-0">
-                    <h5 class="modal-title ms-auto">Bộ lọc</h5>
-                </div>
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col col-12 fw-bold py-2">Tìm kiếm theo thời gian</div>
-
-                        <div class="mb-3 col col-12">
-                            <label class="form-label">Chọn loại thời gian</label>
-                            <select class="form-select" @bind="_timeUnit">
-                                <option value="month">Tháng</option>
-                                <option value="year">Năm</option>
-                            </select>
-                        </div>                
-                        @if (_timeUnit == "month")
-                        {
-                            <div class="mb-3 col col-6">
-                                <label class="form-label">Chọn tháng</label>
-                                <input type="month" class="form-control" @bind="_MonthFilter" />
-                            </div>
-                        }
-
-                        @if (_timeUnit == "year")
-                        {
-                            <div class="mb-3 col col-6">
-                                <label class="form-label">Chọn năm</label>
-                                <input type="number" class="form-control" @bind="_YearFilter" />
-                            </div>
-                        }
-                    </div>
-                </div>
-                <div class="modal-footer border-top-0">
-                    <button type="button" class="btn btn-light border px-4 bg-white" @onclick="HideFilterModal">Hủy bỏ</button>
-                    <button type="button" class="btn btn-primary px-4" @onclick="async () => {
-                        await ApplyFilterWithUrlUpdate();
-                    }">
-                        Áp dụng
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="modal-backdrop fade show"></div>
-}
-
 
 @code {
     private ApplicationDbContext context = default!;
@@ -359,145 +302,15 @@
         public decimal ConversionRate { get; set; }
         public decimal Performance { get; set; }
         public decimal AverageTotal { get; set; }
-
-        // Dictionary to hold sales by month
-        public Dictionary<int, decimal> MonthlySales { get; set; }
-        public Dictionary<int, double> MonthlyOrders { get; set; }
-        public Dictionary<int, double> MonthlyPlayCount { get; set; }
-        public Dictionary<int, double> MonthlyReach { get; set; }
-        public Dictionary<int, decimal> MonthlyConversionRate { get; set; }
-        public Dictionary<int, decimal> MonthlyPerformance { get; set; }
-        public Dictionary<int, decimal> MonthlyAverageTotal { get; set; }
-
-        public PGSummaryViewModel()
-        {
-            MonthlySales = new Dictionary<int, decimal>
-        {
-            { 1, 0m },
-            { 2, 0m },
-            { 3, 0m },
-            { 4, 0m },
-            { 5, 0m },
-            { 6, 0m },
-            { 7, 0m },
-            { 8, 0m },
-            { 9, 0m },
-            { 10, 0m },
-            { 11, 0m },
-            { 12, 0m }
-        };
-            MonthlyOrders = new Dictionary<int, double>
-                {
-                    { 1, 0 },
-                    { 2, 0 },
-                    { 3, 0 },
-                    { 4, 0 },
-                    { 5, 0 },
-                    { 6, 0 },
-                    { 7, 0 },
-                    { 8, 0 },
-                    { 9, 0 },
-                    { 10, 0 },
-                    { 11, 0 },
-                    { 12, 0 }
-
-                };
-            MonthlyPlayCount = new Dictionary<int, double>
-                {
-                    { 1, 0 },
-                    { 2, 0 },
-                    { 3, 0 },
-                    { 4, 0 },
-                    { 5, 0 },
-                    { 6, 0 },
-                    { 7, 0 },
-                    { 8, 0 },
-                    { 9, 0 },
-                    { 10, 0 },
-                    { 11, 0 },
-                    { 12, 0 }
-
-                };
-            MonthlyReach = new Dictionary<int, double>
-                {
-                    { 1, 0 },
-                    { 2, 0 },
-                    { 3, 0 },
-                    { 4, 0 },
-                    { 5, 0 },
-                    { 6, 0 },
-                    { 7, 0 },
-                    { 8, 0 },
-                    { 9, 0 },
-                    { 10, 0 },
-                    { 11, 0 },
-                    { 12, 0 }
-
-                };
-            MonthlyConversionRate = new Dictionary<int, decimal>
-                {
-                    { 1, 0 },
-                    { 2, 0 },
-                    { 3, 0 },
-                    { 4, 0 },
-                    { 5, 0 },
-                    { 6, 0 },
-                    { 7, 0 },
-                    { 8, 0 },
-                    { 9, 0 },
-                    { 10, 0 },
-                    { 11, 0 },
-                    { 12, 0 }
-
-                };
-            MonthlyPerformance = new Dictionary<int, decimal>
-                {
-                    { 1, 0 },
-                    { 2, 0 },
-                    { 3, 0 },
-                    { 4, 0 },
-                    { 5, 0 },
-                    { 6, 0 },
-                    { 7, 0 },
-                    { 8, 0 },
-                    { 9, 0 },
-                    { 10, 0 },
-                    { 11, 0 },
-                    { 12, 0 }
-
-                };
-            MonthlyAverageTotal = new Dictionary<int, decimal>
-                {
-                    { 1, 0 },
-                    { 2, 0 },
-                    { 3, 0 },
-                    { 4, 0 },
-                    { 5, 0 },
-                    { 6, 0 },
-                    { 7, 0 },
-                    { 8, 0 },
-                    { 9, 0 },
-                    { 10, 0 },
-                    { 11, 0 },
-                    { 12, 0 }
-
-                };
-        }
     }
     private List<PGSummaryViewModel> _metrics = new();
     private string _search = "";
     private int TotalRecords { get; set; }
     private readonly PaginationState pagination = new() { ItemsPerPage = 10 };
     private bool _showFilterModal;
-    private bool _showFilterModal2;
-
     private string _filterQuery = "";
     private DateTime? _startDate;
     private DateTime? _endDate;
-
-    private string _timeUnit = "year";
-    private DateTime? _MonthFilter;
-    private int? _YearFilter = DateTime.Now.Year;
 
     [SupplyParameterFromQuery]
     private string? StartDate { get; set; }
@@ -525,14 +338,16 @@
 
     private LineChartOptions lineChartOptions = default!;
 
-    private List<double?> TotalOrderPrices { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    private List<double?> TotalPlayCount { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    private List<double?> TotalOrders { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    private List<string?> DailyLabels { get; set; } = new List<string?> { };
 
-    private List<double?> TotalAverageSales { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    private List<double?> TotalReach { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    private List<double?> TotalConversionRate { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    private List<double?> TotalPerformance { get; set; } = new List<double?> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    private List<double?> TotalOrderPrices { get; set; } = new List<double?> {  };
+    private List<double?> TotalPlayCount { get; set; } = new List<double?> { };
+    private List<double?> TotalOrders { get; set; } = new List<double?> { };
+
+    private List<double?> TotalAverageSales { get; set; } = new List<double?> { };
+    private List<double?> TotalReach { get; set; } = new List<double?> {  };
+    private List<double?> TotalConversionRate { get; set; } = new List<double?> {  };
+    private List<double?> TotalPerformance { get; set; } = new List<double?> {  };
 
 
     public decimal AverageTotalSales { get; set; }
@@ -552,129 +367,72 @@
         StateHasChanged();
     }
 
-    private async Task GetData(){
+    private async Task GetData()
+    {
         context = DbFactory.CreateDbContext();
 
-        if (!string.IsNullOrEmpty(StartDate))
-            _startDate = DateTime.Parse(StartDate);
-
-        if (!string.IsNullOrEmpty(EndDate))
-            _endDate = DateTime.Parse(EndDate);
-
-        var pgSummary = await context.RewardOrders
+        // Apply date filters if startDate or endDate is provided
+        var query = context.RewardOrders
             .Include(pg => pg.Pg)
             .Include(ro => ro.Products)
             .Include(d => d.Details)
-            .Where(x => x.PgId != null)
-            .GroupBy(o => new { o.Pg.AddressText, o.Pg.FirstName, o.Pg.LastName })
-            .Select(g => new PGSummaryViewModel
-                {
-                    Location = g.Key.AddressText,
-                    PGName = $"{g.Key.FirstName} {g.Key.LastName}",
-                    PurchaseCount = g.Count(),
-                    TotalSales = g
-                                    .SelectMany(ro => ro.Products)
-                                    .Sum(p => p.Price * p.Quantity), // Calculate total sales from RewardOrderProducts
-                    GamePlayCount = g.SelectMany(x => x.Details).Where(p => p.Status == 2).Count(),
-                    SalesPerGamePlay = g.Count() > 0 ?
-                                                    ((g.SelectMany(ro => ro.Products)
-                                                    .Sum(p => p.Price * p.Quantity)) / g.Count()
-                                                ) : 0,// Calculate total sales from RewardOrderProducts
-                    Reach = g.Count(), //Lượt tiếp cận
-                    ConversionRate = g.Count() > 0 ?( g.Count() / g.Count()) : 0, // Lượt mua hàng / Lượt tiếp cận
-                    AverageTotal = g.Count() > 0 ?
-                                                (g.SelectMany(ro => ro.Products)
-                                                .Sum(p => p.Price * p.Quantity) / g.Count()
-                                            ) : 0, // Giá trị đơn trung bình
-                    Performance = g.Count() > 0 ?
-                        (g.SelectMany(ro => ro.Products)
-                        .Sum(p => p.Price * p.Quantity) / g.Count()) : 0, // Doanh số / Lượt tiếp cận - Tổng doanh số chia Tổng lượt tiếp cận
+            .Where(x => x.PgId != null);  // Ensure we're including valid PG entries
 
-                })
-            .OrderByDescending(u => u.TotalSales)
-            .Skip(pagination.CurrentPageIndex * pagination.ItemsPerPage)
-            .Take(pagination.ItemsPerPage)
+        if (_startDate.HasValue)
+        {
+            query = query.Where(ro => ro.CreatedAt >= _startDate.Value);
+        }
+
+        if (_endDate.HasValue)
+        {
+            query = query.Where(ro => ro.CreatedAt <= _endDate.Value);
+        }
+
+        // Group data by date (daily)
+        var groupedData = await query
+            .GroupBy(ro => ro.CreatedAt.Date) // Group by date
+            .Select(g => new
+            {
+                Date = g.Key,
+                TotalSales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
+                TotalOrders = g.Count(),
+                TotalPlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2),
+                TotalReach = g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count(),
+                AverageSales = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0,
+                ConversionRate = g.Count() > 0 ? (g.Count() / (double)g.Count()) : 0,
+                Performance = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0
+            })
             .ToListAsync();
 
-        foreach (var summary in pgSummary)
+        // Clear the lists before adding the data
+        DailyLabels.Clear();
+        TotalOrderPrices.Clear();
+        TotalPlayCount.Clear();
+        TotalOrders.Clear();
+        TotalAverageSales.Clear();
+        TotalReach.Clear();
+        TotalConversionRate.Clear();
+        TotalPerformance.Clear();
+
+        // Populate the lists with the grouped data
+        foreach (var data in groupedData)
         {
-            var monthlySales = context.RewardOrders
-                .Where(ro => ro.PgId != null)
-                .GroupBy(ro => new { ro.CreatedAt.Year, ro.CreatedAt.Month }) // Group by Year and Month
-                .Select(g => new
-                {
-                    Month = g.Key.Month,
-                    Year = g.Key.Year,
-                    Sales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
-                    Orders = g.Count(),  // Count the number of orders for the month
-                    PlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2),  // Count the game plays (status 2)
-                    Reach = g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count(), //Lượt tiếp cận
-                    ConversionRate = g.Count() > 0 ? (g.Count() / g.Count()) : 0, // Lượt mua hàng / Lượt tiếp cận\
-                    AverageTotal = g.Count() > 0 ? (g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count()) : 0, // Giá trị đơn trung bình
-                    Performance = g.Count() > 0 ? (g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / 
-                                    g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count()) : 0, // Doanh số / Lượt tiếp cận - Tổng doanh số chia Tổng lượt tiếp cận
-                })
-                .ToList();
-
-            // Add sales, order count, and play count to the respective dictionaries
-            foreach (var monthlySale in monthlySales)
-            {
-                var month = monthlySale.Month;
-
-                // Update MonthlySales with the sales data
-                if (monthlySale.Sales > 0)
-                {
-                    summary.MonthlySales[month] += monthlySale.Sales;
-                }
-
-                // Update MonthlyOrders with the order count
-                summary.MonthlyOrders[month] += monthlySale.Orders;
-
-                // Update MonthlyPlayCount with the game play count
-                summary.MonthlyPlayCount[month] += monthlySale.PlayCount;
-
-                // Update MonthlyReach 
-                summary.MonthlyReach[month] += monthlySale.Reach;
-
-                // Update MonthlyConversionRate
-                summary.MonthlyConversionRate[month] += monthlySale.ConversionRate;
-
-                // Update MonthlyAverageTotal
-
-                summary.MonthlyAverageTotal[month] += monthlySale.AverageTotal;
-
-                // Update MonthlyPerformance
-                summary.MonthlyPerformance[month] += monthlySale.Performance;
-            }
+            DailyLabels.Add(data.Date.ToString("dd/MM/yyyy"));
+            TotalOrderPrices.Add((double)data.TotalSales);
+            TotalPlayCount.Add(data.TotalPlayCount);
+            TotalOrders.Add(data.TotalOrders);
+            TotalAverageSales.Add((double)data.AverageSales);
+            TotalReach.Add(data.TotalReach);
+            TotalConversionRate.Add((double)data.ConversionRate);
+            TotalPerformance.Add((double)data.Performance);
         }
 
-
-        foreach (var summary in pgSummary)
-        {
-            Console.WriteLine($"Location: {summary.Location}, PG Name: {summary.PGName}");
-            Console.WriteLine($"Purchase Count: {summary.PurchaseCount}, Total Sales: {summary.TotalSales}, Game Play Count: {summary.GamePlayCount}, Sales per Game Play: {summary.SalesPerGamePlay}");
-            Console.WriteLine("Monthly Sales:");
-            for (int i = 1; i <= 12; i++)
-            {
-                TotalOrderPrices[i - 1] = (double)summary.MonthlySales[i];
-                TotalPlayCount[i - 1] = summary.MonthlyPlayCount[i];
-                TotalOrders[i - 1] = summary.MonthlyOrders[i];
-
-                TotalAverageSales[i - 1] = (double)summary.MonthlyAverageTotal[i];
-                TotalReach[i - 1] = (double)summary.MonthlyReach[i];
-                TotalConversionRate[i - 1] = (double)summary.MonthlyConversionRate[i];
-                TotalPerformance[i - 1] = (double)summary.MonthlyPerformance[i];
-            }
-            // Console.WriteLine("Total Order Prices:");
-            foreach (var item in TotalOrderPrices)
-            {
-                Console.WriteLine($"{item}");
-            }
-            Console.WriteLine();  // Print a blank line between each PGSummary
-        }
-        _metrics = pgSummary;
+        // Update the data in the Metric Cards
         UpdateDataInMetricCard(_metrics);
+
+        StateHasChanged(); // Trigger re-render
     }
+
 
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -684,7 +442,7 @@
             // Initialize charts on the first render
             await lineChartSales.InitializeAsync(chartDataSales, lineChartOptions);
             await lineChartOrders.InitializeAsync(chartDataOrders, lineChartOptions);
-            await lineChartPlays.InitializeAsync(chartDataPlays, lineChartOptions); 
+            await lineChartPlays.InitializeAsync(chartDataPlays, lineChartOptions);
             await lineChartAverageTotal.InitializeAsync(chartDataAverageTotal, lineChartOptions);
             await lineChartConversionRates.InitializeAsync(chartDataConversionRates, lineChartOptions);
             await lineChartPerformances.InitializeAsync(chartDataPerformances, lineChartOptions);
@@ -793,7 +551,7 @@
                     TotalSales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
                     GamePlayCount = g.SelectMany(x => x.Details).Where(p => p.Status == 2).Count(),
                     SalesPerGamePlay = g.Count() > 0 ?
-                                        ((g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity)) / g.Count()) : 0
+                                            ((g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity)) / g.Count()) : 0
                 })
             .OrderByDescending(u => u.TotalSales)
             .Skip(pagination.CurrentPageIndex * pagination.ItemsPerPage)
@@ -834,30 +592,6 @@
         await UpdateUrlParameters();
         ApplyFilter();
     }
-    private async Task ApplyFilterWithUrlUpdate2()
-    {
-        if (_timeUnit == "month")
-        {
-            // Lọc theo tháng
-            if (_MonthFilter.HasValue)
-            {
-                // Thực hiện hành động lọc theo tháng
-            }
-        }
-        else if (_timeUnit == "year")
-        {
-            // Lọc theo năm
-            if (_YearFilter.HasValue)
-            {
-                // Thực hiện hành động lọc theo năm
-            }
-        }
-
-        StateHasChanged();
-
-        // Hide the filter modal
-        HideFilterModal2();
-    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -870,8 +604,7 @@
     {
         var colors = ColorUtility.CategoricalTwelveColors;
 
-        var labels = new List<string> { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
-        // var datasets = new List<IChartDataset>();
+        var labels = DailyLabels;
 
         var datasetsSales = new List<IChartDataset>
         {
@@ -1018,15 +751,6 @@
     private void HideFilterModal()
     {
         _showFilterModal = false;
-    }
-    private void ShowFilterModal2()
-    {
-        _showFilterModal2 = true;
-    }
-
-    private void HideFilterModal2()
-    {
-        _showFilterModal2 = false;
     }
     private void UpdateDataInMetricCard(List<PGSummaryViewModel> metrics)
     {
