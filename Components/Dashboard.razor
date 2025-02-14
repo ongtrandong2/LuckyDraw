@@ -36,19 +36,21 @@
 
     <div class="container py-4">
         <div class="row g-4">
-            <!-- Total Revenue Card -->
+
+            <!-- Tổng lượt tiếp cận -->
             <div class="col-md-4">
                 <MetricCard BackgroundColor="#fee2e2"
                             IconBackgroundColor="#fecaca"
                             IconColor="#b91c1c"
-                            MetricValue="@(_metrics.Sum(x => x.TotalSales).ToString("N0") + " VNĐ")"
-                            MetricLabel="Tổng doanh thu">
+                            MetricValue="@ReachTotal.ToString()"
+                            MetricLabel="Tổng lượt tiếp cận">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10V5" />
                     </svg>
                 </MetricCard>
             </div>
 
+             <!-- Tổng lượt mua hàng -->
             <div class="col-md-4">
                 <MetricCard BackgroundColor="#d1fae5"
                             IconBackgroundColor="#bbf7d0"
@@ -61,7 +63,24 @@
                 </MetricCard>
             </div>
 
-            <!-- Customers Card -->
+
+            <!-- Tổng doanh thu -->
+            <div class="col-md-4">
+                <MetricCard BackgroundColor="#fee2e2"
+                            IconBackgroundColor="#fecaca"
+                            IconColor="#b91c1c"
+                            MetricValue="@(_metrics.Sum(x => x.TotalSales).ToString("N0") + " VNĐ")"
+                            MetricLabel="Tổng doanh thu">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10V5" />
+                    </svg>
+                </MetricCard>
+            </div>
+        </div>
+
+        <div class="row g-4 mt-1">
+
+            <!-- Tổng lượt chơi -->
             <div class="col-md-4">
                 <MetricCard BackgroundColor="#ede9fe"
                             IconBackgroundColor="#e9d5ff"
@@ -70,21 +89,6 @@
                             MetricLabel="Lượt chơi game">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14h5m6 0v2m0-6h4m-4 0h-4" />
-                    </svg>
-                </MetricCard>
-            </div>
-        </div>
-
-        <div class="row g-4 mt-1">
-            <!-- Tổng lượt tiếp cận -->
-            <div class="col-md-4">
-                <MetricCard BackgroundColor="#fee2e2"
-                            IconBackgroundColor="#fecaca"
-                            IconColor="#b91c1c"
-                            MetricValue="@ReachTotal.ToString()"
-                            MetricLabel="Tổng lượt tiếp cận">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: 24px; height: 24px;">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10V5" />
                     </svg>
                 </MetricCard>
             </div>
@@ -461,10 +465,7 @@
             Console.WriteLine();  // Print a blank line between each PGSummary
         }
         _metrics = pgSummary;
-        AverageTotalSales = _metrics.Sum(x => x.PurchaseCount) > 0 ? _metrics.Sum(x => x.TotalSales) / _metrics.Sum(x => x.PurchaseCount) : 0;
-        ReachTotal = _metrics.Count();
-        ConversionRate = ReachTotal > 0 ? _metrics.Sum(x => x.PurchaseCount) / ReachTotal : 0;
-        Performance = ReachTotal > 0 ? _metrics.Sum(x => x.TotalSales) / ReachTotal : 0;
+        UpdateDataInMetricCard(_metrics);
     }
 
 
@@ -592,6 +593,7 @@
         // Update TotalRecords for pagination (this should be done after the filter query is applied)
         TotalRecords = await query.CountAsync(); // Get the total number of records for pagination
 
+        UpdateDataInMetricCard(_metrics);
         // Optionally, trigger a re-render to update the UI
         StateHasChanged();
 
@@ -712,7 +714,13 @@
     {
         _showFilterModal = false;
     }
-
+    private void UpdateDataInMetricCard(List<PGSummaryViewModel> metrics)
+    {
+        AverageTotalSales = metrics.Sum(x => x.PurchaseCount) > 0 ? metrics.Sum(x => x.TotalSales) / metrics.Sum(x => x.PurchaseCount) : 0;
+        ReachTotal = metrics.Count();
+        ConversionRate = ReachTotal > 0 ? metrics.Sum(x => x.PurchaseCount) / ReachTotal : 0;
+        Performance = ReachTotal > 0 ? metrics.Sum(x => x.TotalSales) / ReachTotal : 0;
+    }
     public async ValueTask DisposeAsync()
     {
         await context.DisposeAsync();
