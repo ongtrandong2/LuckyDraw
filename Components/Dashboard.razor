@@ -465,7 +465,6 @@
         ReachTotal = _metrics.Count();
         ConversionRate = ReachTotal > 0 ? _metrics.Sum(x => x.PurchaseCount) / ReachTotal : 0;
         Performance = ReachTotal > 0 ? _metrics.Sum(x => x.TotalSales) / ReachTotal : 0;
-        //await InvokeAsync(StateHasChanged);
     }
 
     // protected override void OnInitialized()
@@ -533,7 +532,6 @@
 
         // lineChartOptions.Plugins.Title!.Text = "Tổng doanh thu";
         // lineChartOptions.Plugins.Title.Display = true;
-        //UpdateData();
     }
 
     // This method will be called when data changes
