@@ -389,43 +389,7 @@
         }
 
         // Group data by date (daily)
-        var groupedData = await query
-            .GroupBy(ro => ro.CreatedAt.Date) // Group by date
-            .Select(g => new
-            {
-                Date = g.Key,
-                TotalSales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
-                TotalOrders = g.Count(),
-                TotalPlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2),
-                TotalReach = g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count(),
-                AverageSales = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0,
-                ConversionRate = g.Count() > 0 ? (g.Count() / (double)g.Count()) : 0,
-                Performance = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0
-            })
-            .ToListAsync();
-
-        // Clear the lists before adding the data
-        DailyLabels.Clear();
-        TotalOrderPrices.Clear();
-        TotalPlayCount.Clear();
-        TotalOrders.Clear();
-        TotalAverageSales.Clear();
-        TotalReach.Clear();
-        TotalConversionRate.Clear();
-        TotalPerformance.Clear();
-
-        // Populate the lists with the grouped data
-        foreach (var data in groupedData)
-        {
-            DailyLabels.Add(data.Date.ToString("dd/MM/yyyy"));
-            TotalOrderPrices.Add((double)data.TotalSales);
-            TotalPlayCount.Add(data.TotalPlayCount);
-            TotalOrders.Add(data.TotalOrders);
-            TotalAverageSales.Add((double)data.AverageSales);
-            TotalReach.Add(data.TotalReach);
-            TotalConversionRate.Add((double)data.ConversionRate);
-            TotalPerformance.Add((double)data.Performance);
-        }
+        await GroupDataByDate(query);
 
         // Update the data in the Metric Cards
         UpdateDataInMetricCard(_metrics);
@@ -560,9 +524,11 @@
 
         _metrics = pgSummary; // Store the filtered summary data
 
+        await GroupDataByDate(query); // Group the data by date
+
         // Update TotalRecords for pagination (this should be done after the filter query is applied)
         TotalRecords = await query.CountAsync(); // Get the total number of records for pagination
-
+        await UpdateData();
         UpdateDataInMetricCard(_metrics);
         // Optionally, trigger a re-render to update the UI
         StateHasChanged();
@@ -585,6 +551,47 @@
 
         var uri = NavigationManager.GetUriWithQueryParameters(parameters);
         NavigationManager.NavigateTo(uri);
+    }
+
+    private async Task GroupDataByDate(IQueryable<RewardOrder> query)
+    {
+        var groupedData = await query
+         .GroupBy(ro => ro.CreatedAt.Date) // Group by date
+         .Select(g => new
+         {
+             Date = g.Key,
+             TotalSales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
+             TotalOrders = g.Count(),
+             TotalPlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2),
+             TotalReach = g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count(),
+             AverageSales = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0,
+             ConversionRate = g.Count() > 0 ? (g.Count() / (double)g.Count()) : 0,
+             Performance = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0
+         })
+         .ToListAsync();
+
+        // Clear the lists before adding the data
+        DailyLabels.Clear();
+        TotalOrderPrices.Clear();
+        TotalPlayCount.Clear();
+        TotalOrders.Clear();
+        TotalAverageSales.Clear();
+        TotalReach.Clear();
+        TotalConversionRate.Clear();
+        TotalPerformance.Clear();
+
+        // Populate the lists with the grouped data
+        foreach (var data in groupedData)
+        {
+            DailyLabels.Add(data.Date.ToString("dd/MM/yyyy"));
+            TotalOrderPrices.Add((double)data.TotalSales);
+            TotalPlayCount.Add(data.TotalPlayCount);
+            TotalOrders.Add(data.TotalOrders);
+            TotalAverageSales.Add((double)data.AverageSales);
+            TotalReach.Add(data.TotalReach);
+            TotalConversionRate.Add((double)data.ConversionRate);
+            TotalPerformance.Add((double)data.Performance);
+        }
     }
 
     private async Task ApplyFilterWithUrlUpdate()
