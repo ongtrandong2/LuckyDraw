@@ -276,7 +276,8 @@
                     <button type="button" class="btn btn-light border px-4 bg-white" @onclick="HideFilterModal">Hủy bỏ</button>
                     <button type="button" class="btn btn-primary px-4" @onclick="async () => {
                         await pagination.SetCurrentPageIndexAsync(0);
-                        await ApplyFilterWithUrlUpdate()
+                        await ApplyFilterWithUrlUpdate();
+                        HideFilterModal();
                     }">
                         Áp dụng
                     </button>
