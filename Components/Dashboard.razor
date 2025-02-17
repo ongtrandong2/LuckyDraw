@@ -276,7 +276,7 @@
                     <button type="button" class="btn btn-light border px-4 bg-white" @onclick="HideFilterModal">Hủy bỏ</button>
                     <button type="button" class="btn btn-primary px-4" @onclick="async () => {
                         await pagination.SetCurrentPageIndexAsync(0);
-                        await ApplyFilterWithUrlUpdate();
+                        await ApplyFilterWithUrlUpdate()
                     }">
                         Áp dụng
                     </button>
@@ -536,6 +536,7 @@
                 ConversionRate = g.Count() > 0 ? (g.Count() / (double)g.Count()) : 0,
                 Performance = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0
             })
+            .OrderBy(g => g.Date)
             .ToListAsync();
 
         // Clear the lists before adding the data
@@ -607,6 +608,7 @@
              ConversionRate = g.Count() > 0 ? (g.Count() / (double)g.Count()) : 0,
              Performance = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0
          })
+         .OrderBy(g => g.Date)
          .ToListAsync();
 
         // Clear the lists before adding the data
