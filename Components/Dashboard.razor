@@ -177,6 +177,28 @@
 <div class="row g-5">
     <div class="col-md-6">
     </div>
+    <div class="my-4 d-flex">
+        <div class="flex-fill" />
+        <div class="flex-fill text-end">
+            <button class="btn btn-light mx-2" @onclick="() => ShowChartFilterModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 6H10" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M3 12H12" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M19 12H21" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M14 6L21 6" stroke="#16151C" stroke-width="1.5" stroke-linecap="round"
+                          stroke-linejoin="round" />
+                    <path d="M13 18H20" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M3 18H6" stroke="#16151C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <circle cx="8" cy="18" r="2" stroke="#16151C" stroke-width="1.5" />
+                    <circle cx="17" cy="12" r="2" stroke="#16151C" stroke-width="1.5" />
+                    <circle cx="12" cy="6" r="2" stroke="#16151C" stroke-width="1.5" />
+                </svg>
+                <span class="ms-1">
+                    Chọn loại biểu đồ
+                </span>
+            </button>
+        </div>
+    </div>
 </div>
 
 
@@ -266,7 +288,6 @@
                             <input type="date" class="form-control" @bind="_endDate" />
                         </div>
                     </div>
-
                 </div>
                 <div class="modal-footer border-top-0">
                     <button type="button" class="btn btn-light border px-4 bg-white" @onclick="HideFilterModal">Hủy bỏ</button>
@@ -283,6 +304,52 @@
     </div>
     <div class="modal-backdrop fade show"></div>
 }
+
+@if (_showChartFilterModal)
+{
+    <div class="modal fade modal-lg show d-block" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-bottom-0 ">
+                    <h5 class="modal-title ms-auto">Chọn loại biểu đồ</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col col-12 fw-bold py-2">Chọn kiểu biểu đồ</div>
+                        <div class="mb-3 col col-12">
+                            <label class="form-label">Kiểu biểu đồ</label>
+                            <select class="form-control" @bind="_chartType">
+                                <option value="Daily">Mặc định</option>
+                                <option value="Monthly">Tháng trong năm</option>
+                                <option value="Yearly">Toàn bộ các năm</option>
+                            </select>
+                        </div>
+
+                        @if (_chartType == ChartType.Monthly)
+                        {
+                            <div class="mb-3 col col-12">
+                                <label class="form-label">Chọn năm</label>
+                                <input type="number" class="form-control" @bind="_year" min="1900" max="2099" />
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-light border px-4 bg-white" @onclick="HideChartFilterModal">Hủy bỏ</button>
+                    <button type="button" class="btn btn-primary px-4" @onclick="async () => {
+                        await pagination.SetCurrentPageIndexAsync(0);
+                        await ApplyFilterWithUrlUpdate();
+                        HideChartFilterModal();
+                    }">
+                        Áp dụng
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
 
 @code {
     private ApplicationDbContext context = default!;
@@ -305,16 +372,20 @@
     private int TotalRecords { get; set; }
     private readonly PaginationState pagination = new() { ItemsPerPage = 10 };
     private bool _showFilterModal;
+    private bool _showChartFilterModal;
     private string _filterQuery = "";
     private DateTime? _startDate;
     private DateTime? _endDate;
+    private int _year;
+
+    private enum ChartType { Daily, Monthly, Yearly };
+    private ChartType _chartType = ChartType.Daily;
 
     [SupplyParameterFromQuery]
     private string? StartDate { get; set; }
 
     [SupplyParameterFromQuery]
     private string? EndDate { get; set; }
-
 
 
     private LineChart lineChartSales = default!;
@@ -336,6 +407,8 @@
     private LineChartOptions lineChartOptions = default!;
 
     private List<string?> DailyLabels { get; set; } = new List<string?> { };
+    private List<string?> MonthlyLabels { get; set; } = new List<string?> { };
+    private List<string?> YearlyLabels { get; set; } = new List<string?> { };
 
     private List<double?> TotalOrderPrices { get; set; } = new List<double?> {  };
     private List<double?> TotalPlayCount { get; set; } = new List<double?> { };
@@ -351,6 +424,7 @@
     public int ReachTotal { get; set; }
     public decimal ConversionRate { get; set; }
     public decimal Performance { get; set; }
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -530,7 +604,7 @@
                 TotalPlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2),
                 TotalReach = g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count(),
                 AverageSales = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0,
-                ConversionRate = g.Count() > 0 ? (g.Count() / (double)g.Count()) : 0,
+                ConversionRate = g.Count() > 0 ? (g.Count() / g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count()) : 0,
                 Performance = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0
             })
             .OrderBy(g => g.Date)
@@ -602,7 +676,7 @@
              TotalPlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2),
              TotalReach = g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count(),
              AverageSales = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0,
-             ConversionRate = g.Count() > 0 ? (g.Count() / (double)g.Count()) : 0,
+             ConversionRate = g.Count() > 0 ? (g.Count() / g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count()) : 0,
              Performance = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0
          })
          .OrderBy(g => g.Date)
@@ -631,6 +705,94 @@
             TotalPerformance.Add((double)data.Performance);
         }
     }
+
+    private async Task GroupDataByMonth(IQueryable<RewardOrder> query, int year)
+    {
+        var groupedData = await query
+            .Where(ro => ro.CreatedAt.Year == year) // Filter by the specified year
+            .GroupBy(ro => new { ro.CreatedAt.Year, ro.CreatedAt.Month }) // Group by year and month
+            .Select(g => new
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                TotalSales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
+                TotalOrders = g.Count(),
+                TotalPlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2),
+                TotalReach = g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count(),
+                AverageSales = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0,
+                ConversionRate = g.Count() > 0 ? (g.Count() / g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count()) : 0,
+                Performance = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0
+            })
+            .OrderBy(g => g.Year).ThenBy(g => g.Month) // Sort by year and then by month
+            .ToListAsync();
+
+        // Clear the lists before adding the data
+        MonthlyLabels.Clear();
+        TotalOrderPrices.Clear();
+        TotalPlayCount.Clear();
+        TotalOrders.Clear();
+        TotalAverageSales.Clear();
+        TotalReach.Clear();
+        TotalConversionRate.Clear();
+        TotalPerformance.Clear();
+
+        // Populate the lists with the grouped data
+        foreach (var data in groupedData)
+        {
+            var monthLabel = new DateTime(data.Year, data.Month, 1).ToString("MM/yyyy"); // Format as MM/yyyy
+            MonthlyLabels.Add(monthLabel);
+            TotalOrderPrices.Add((double)data.TotalSales);
+            TotalPlayCount.Add(data.TotalPlayCount);
+            TotalOrders.Add(data.TotalOrders);
+            TotalAverageSales.Add((double)data.AverageSales);
+            TotalReach.Add(data.TotalReach);
+            TotalConversionRate.Add((double)data.ConversionRate);
+            TotalPerformance.Add((double)data.Performance);
+        }
+    }
+    private async Task GroupDataByYear(IQueryable<RewardOrder> query)
+    {
+        var groupedData = await query
+            .GroupBy(ro => ro.CreatedAt.Year) // Group by year only
+            .Select(g => new
+            {
+                Year = g.Key,
+                TotalSales = g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity),
+                TotalOrders = g.Count(),
+                TotalPlayCount = g.SelectMany(ro => ro.Details).Count(d => d.Status == 2),
+                TotalReach = g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count(),
+                AverageSales = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0,
+                ConversionRate = g.Count() > 0 ? (g.Count() / g.GroupBy(ro => new { ro.CustomerZaloId, ro.CustomerPhone }).Count()) : 0,
+                Performance = g.Count() > 0 ? g.SelectMany(ro => ro.Products).Sum(p => p.Price * p.Quantity) / g.Count() : 0
+            })
+            .OrderBy(g => g.Year) // Sort by year
+            .ToListAsync();
+
+        // Clear the lists before adding the data
+        YearlyLabels.Clear();
+        TotalOrderPrices.Clear();
+        TotalPlayCount.Clear();
+        TotalOrders.Clear();
+        TotalAverageSales.Clear();
+        TotalReach.Clear();
+        TotalConversionRate.Clear();
+        TotalPerformance.Clear();
+
+        // Populate the lists with the grouped data
+        foreach (var data in groupedData)
+        {
+            YearlyLabels.Add(data.Year.ToString());
+            TotalOrderPrices.Add((double)data.TotalSales);
+            TotalPlayCount.Add(data.TotalPlayCount);
+            TotalOrders.Add(data.TotalOrders);
+            TotalAverageSales.Add((double)data.AverageSales);
+            TotalReach.Add(data.TotalReach);
+            TotalConversionRate.Add((double)data.ConversionRate);
+            TotalPerformance.Add((double)data.Performance);
+        }
+    }
+
+
 
     private async Task ApplyFilterWithUrlUpdate()
     {
@@ -796,6 +958,15 @@
     private void HideFilterModal()
     {
         _showFilterModal = false;
+    }
+    private void ShowChartFilterModal()
+    {
+        _showChartFilterModal = true;
+    }
+
+    private void HideChartFilterModal()
+    {
+        _showChartFilterModal = false;
     }
     private void UpdateDataInMetricCard(List<PGSummaryViewModel> metrics)
     {
