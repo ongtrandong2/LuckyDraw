@@ -337,8 +337,8 @@
                 <div class="modal-footer border-top-0">
                     <button type="button" class="btn btn-light border px-4 bg-white" @onclick="HideChartFilterModal">Hủy bỏ</button>
                     <button type="button" class="btn btn-primary px-4" @onclick="async () => {
-                        await pagination.SetCurrentPageIndexAsync(0);
-                        await ApplyFilterWithUrlUpdate();
+                        await GetData();
+                        await UpdateData();
                         HideChartFilterModal();
                     }">
                         Áp dụng
@@ -406,9 +406,11 @@
 
     private LineChartOptions lineChartOptions = default!;
 
-    private List<string?> DailyLabels { get; set; } = new List<string?> { };
-    private List<string?> MonthlyLabels { get; set; } = new List<string?> { };
-    private List<string?> YearlyLabels { get; set; } = new List<string?> { };
+    private List<string?> labels { get; set; } = new List<string?> { };
+
+    // private List<string?> DailyLabels { get; set; } = new List<string?> { };
+    // private List<string?> MonthlyLabels { get; set; } = new List<string?> { };
+    // private List<string?> YearlyLabels { get; set; } = new List<string?> { };
 
     private List<double?> TotalOrderPrices { get; set; } = new List<double?> {  };
     private List<double?> TotalPlayCount { get; set; } = new List<double?> { };
@@ -460,7 +462,18 @@
         }
 
         // Group data by date (daily)
-        await GroupDataByDate(query);
+        if (_chartType == ChartType.Daily)
+        {
+            await GroupDataByDate(query);
+        }
+        if (_chartType == ChartType.Monthly)
+        {
+            await GroupDataByMonth(query, _year);
+        }
+        if (_chartType == ChartType.Yearly)
+        {
+            await GroupDataByYear(query);
+        }
 
         // Update the data in the Metric Cards
         UpdateDataInMetricCard(_metrics);
@@ -611,7 +624,8 @@
             .ToListAsync();
 
         // Clear the lists before adding the data
-        DailyLabels.Clear();
+        // DailyLabels.Clear();
+        labels.Clear();
         TotalOrderPrices.Clear();
         TotalPlayCount.Clear();
         TotalOrders.Clear();
@@ -623,7 +637,8 @@
         // Populate the lists with the grouped data
         foreach (var data in groupedData)
         {
-            DailyLabels.Add(data.Date.ToString("dd/MM/yyyy"));
+            // DailyLabels.Add(data.Date.ToString("dd/MM/yyyy"));
+            labels.Add(data.Date.ToString("dd/MM/yyyy"));
             TotalOrderPrices.Add((double)data.TotalSales);
             TotalPlayCount.Add(data.TotalPlayCount);
             TotalOrders.Add(data.TotalOrders);
@@ -635,7 +650,20 @@
 
         _metrics = pgSummary; // Store the filtered summary data
 
-        await GroupDataByDate(query); // Group the data by date
+
+        if (_chartType == ChartType.Daily)
+        {
+            await GroupDataByDate(query);
+        }
+        if (_chartType == ChartType.Monthly)
+        {
+            await GroupDataByMonth(query, _year);
+        }
+        if (_chartType == ChartType.Yearly)
+        {
+            await GroupDataByYear(query);
+        }
+
 
         // Update TotalRecords for pagination (this should be done after the filter query is applied)
         TotalRecords = await query.CountAsync(); // Get the total number of records for pagination
@@ -683,7 +711,8 @@
          .ToListAsync();
 
         // Clear the lists before adding the data
-        DailyLabels.Clear();
+        // DailyLabels.Clear();
+        labels.Clear();
         TotalOrderPrices.Clear();
         TotalPlayCount.Clear();
         TotalOrders.Clear();
@@ -695,7 +724,8 @@
         // Populate the lists with the grouped data
         foreach (var data in groupedData)
         {
-            DailyLabels.Add(data.Date.ToString("dd/MM/yyyy"));
+            // DailyLabels.Add(data.Date.ToString("dd/MM/yyyy"));
+            labels.Add(data.Date.ToString("dd/MM/yyyy"));
             TotalOrderPrices.Add((double)data.TotalSales);
             TotalPlayCount.Add(data.TotalPlayCount);
             TotalOrders.Add(data.TotalOrders);
@@ -727,7 +757,8 @@
             .ToListAsync();
 
         // Clear the lists before adding the data
-        MonthlyLabels.Clear();
+        // MonthlyLabels.Clear();
+        labels.Clear();
         TotalOrderPrices.Clear();
         TotalPlayCount.Clear();
         TotalOrders.Clear();
@@ -740,7 +771,8 @@
         foreach (var data in groupedData)
         {
             var monthLabel = new DateTime(data.Year, data.Month, 1).ToString("MM/yyyy"); // Format as MM/yyyy
-            MonthlyLabels.Add(monthLabel);
+            // MonthlyLabels.Add(monthLabel);
+            labels.Add(monthLabel);
             TotalOrderPrices.Add((double)data.TotalSales);
             TotalPlayCount.Add(data.TotalPlayCount);
             TotalOrders.Add(data.TotalOrders);
@@ -769,7 +801,8 @@
             .ToListAsync();
 
         // Clear the lists before adding the data
-        YearlyLabels.Clear();
+        // YearlyLabels.Clear();
+        labels.Clear();
         TotalOrderPrices.Clear();
         TotalPlayCount.Clear();
         TotalOrders.Clear();
@@ -781,7 +814,8 @@
         // Populate the lists with the grouped data
         foreach (var data in groupedData)
         {
-            YearlyLabels.Add(data.Year.ToString());
+            // YearlyLabels.Add(data.Year.ToString());
+            labels.Add(data.Year.ToString());
             TotalOrderPrices.Add((double)data.TotalSales);
             TotalPlayCount.Add(data.TotalPlayCount);
             TotalOrders.Add(data.TotalOrders);
@@ -810,9 +844,6 @@
     private void InitializeChartData()
     {
         var colors = ColorUtility.CategoricalTwelveColors;
-
-        var labels = DailyLabels;
-
         var datasetsSales = new List<IChartDataset>
         {
             new LineChartDataset
