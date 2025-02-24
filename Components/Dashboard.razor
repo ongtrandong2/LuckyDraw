@@ -102,7 +102,6 @@
                 </MetricCard>
             </div>
 
-
             <!-- Tổng doanh thu -->
             <div class="col-md-4">
                 <MetricCard BackgroundColor="#ede9fe"
@@ -205,12 +204,12 @@
 <div class="d-flex flex-wrap justify-content-between">
     @* Biểu đồ Tổng số đơn hàng *@
     <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-        <LineChart @ref="lineChartSales" Width="400" />
+        <LineChart @ref="lineChartSales" Width="500" />
     </div>
 
     @* Biểu đồ Lượt đặt hàng *@
     <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-        <LineChart @ref="lineChartOrders" Width="400" />
+        <LineChart @ref="lineChartOrders" Width="500" />
     </div>
 
 
@@ -218,23 +217,23 @@
 <div class="d-flex flex-wrap justify-content-between">
     @* Biểu đồ Lượt chơi game *@
     <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-        <LineChart @ref="lineChartPlays" Width="400" />
+        <LineChart @ref="lineChartPlays" Width="500" />
     </div>
 
     @* Biểu đồ Tổng số lượt tiếp cận *@
     <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-        <LineChart @ref="lineChartReach" Width="400" />
+        <LineChart @ref="lineChartReach" Width="500" />
     </div>
 </div>
 <div class="d-flex flex-wrap justify-content-between">
     @* Biểu đồ Conversiton Rate *@
     <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-        <LineChart @ref="lineChartConversionRates" Width="400" />
+        <LineChart @ref="lineChartConversionRates" Width="500" />
     </div>
 
     @* Biểu đồ Doanh số/Lượt tiếp cận *@
     <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-        <LineChart @ref="lineChartPerformances" Width="400" />
+        <LineChart @ref="lineChartPerformances" Width="500" />
     </div>
 </div>
 
@@ -242,7 +241,7 @@
 
     @* Biểu đồ AOV(Giá trị đơn trung bình) *@
     <div class="container-fluid overflow-x-auto" style="flex: 1; min-width: 300px; margin: 10px;">
-        <LineChart @ref="lineChartAverageTotal" Width="400" />
+        <LineChart @ref="lineChartAverageTotal" Width="500" />
     </div>
 </div>
 
@@ -252,9 +251,9 @@
             <PropertyColumn Property="metric => metric.Location" Title="Địa điểm" />
             <PropertyColumn Property="metric => metric.PGName" Title="PG" />
             <PropertyColumn Property="metric => metric.PurchaseCount" Title="Lượt Mua hàng" />
-            <PropertyColumn Property="metric => metric.TotalSales" Title="Doanh số" Format="C0" />
+            <PropertyColumn Property="metric => metric.TotalSales" Title="Doanh số" Format="###,### ₫" />
             <PropertyColumn Property="metric => metric.GamePlayCount" Title="Lượt chơi game" />
-            <PropertyColumn Property="metric => metric.SalesPerGamePlay" Title="Doanh số trên lượt chơi" Format="C0" />
+            <PropertyColumn Property="metric => metric.SalesPerGamePlay" Title="Doanh số trên lượt chơi" Format="###,### ₫" />
         </QuickGrid>
     </div>
 </div>
