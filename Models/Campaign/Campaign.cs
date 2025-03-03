@@ -2,6 +2,11 @@
 
 namespace PGAdmin.Models.Campaign
 {
+    public enum SchemeType
+    {
+        MaxSpin = 1,  // (A) Nhận thưởng theo scheme có lượt quay cao nhất
+        SumSpin = 2   // (B) Cộng tổng lượt thưởng của các scheme thoả mãn
+    }
     public class Campaign
     {
         public int Id { get; set; }
@@ -17,5 +22,7 @@ namespace PGAdmin.Models.Campaign
         public int NumberOfQrAccessScanPerUser { get; set; }
         public bool PGQrAccess { get; set; }
         public int NumberOfPGQrAccessScanPerUser { get; set; }
+
+        public SchemeType Scheme { get; set; } = SchemeType.MaxSpin;
     }
 }

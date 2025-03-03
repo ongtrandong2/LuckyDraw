@@ -43,7 +43,49 @@ namespace PGAdmin.Controllers
             return Ok(activeCampaign);
         }
 
-        private int GetCampaignSpinCount(Campaign campaign, List<ProductInput> productInputs)
+       
+
+        [HttpGet("products")]
+        public IActionResult GetAllProducts()
+        {
+            var products = _context.Products.ToList();
+
+            if (products == null || !products.Any())
+            {
+                return NotFound("No products found.");
+            }
+
+            return Ok(products);
+        }
+
+        [HttpPost("SpinCount")]
+        public IActionResult CalculateSpinCount([FromBody] List<ProductInput> productInputs)
+        {
+            DateTime currentDate = DateTime.UtcNow;
+
+            var activeCampaign = _context.Campaigns
+                .Include(c => c.GiftRules)
+                    .ThenInclude(gr => gr.GiftConditions)
+                        .ThenInclude(gc => gc.GiftProducts)
+                .FirstOrDefault(c => c.StartDate <= currentDate && c.EndDate >= currentDate && c.Status == 1);
+
+            if (activeCampaign == null)
+            {
+                return BadRequest("No active campaign found.");
+            }
+
+            int spinCount = GetCampaignSpinCount(activeCampaign, productInputs, activeCampaign.Scheme);
+
+            return Ok(new { SpinCount = spinCount });
+        }
+
+        private int GetCampaignSpinCount(Campaign campaign, List<ProductInput> productInputs, SchemeType schemeType)
+        {
+
+            return schemeType == SchemeType.MaxSpin ? GetMaxSpin(campaign,productInputs) : GetSumSpin(campaign, productInputs);
+        }
+
+        private int GetMaxSpin(Campaign campaign, List<ProductInput> productInputs)
         {
             int maxSpinCount = 0;
 
@@ -76,7 +118,7 @@ namespace PGAdmin.Controllers
                     {
                         maxSpinCount = giftRule.SpinCount;
                     }
-                } 
+                }
                 else if (giftRule.Type == 2)
                 {
                     double totalPrice = 0;
@@ -100,46 +142,63 @@ namespace PGAdmin.Controllers
                         maxSpinCount = giftRule.SpinCount;
                     }
                 }
-                
+
             }
             return maxSpinCount;
         }
 
-        [HttpGet("products")]
-        public IActionResult GetAllProducts()
+        private int GetSumSpin(Campaign campaign, List<ProductInput> productInputs)
         {
-            var products = _context.Products.ToList();
+            int totalSpinCount = 0;
+            var productQuantityMap = productInputs.ToDictionary(p => p.ProductId, p => p.Quantity);
 
-            if (products == null || !products.Any())
+            foreach (var giftRule in campaign.GiftRules)
             {
-                return NotFound("No products found.");
+                int spinCountForRule = 0;
+
+                if (giftRule.Type == 1)
+                {
+
+                    foreach (var condition in giftRule.GiftConditions)
+                    {
+                        foreach (var product in condition.GiftProducts)
+                        {
+                            if (productQuantityMap.ContainsKey(product.ProductId))
+                            {
+                                int multiplier = productQuantityMap[product.ProductId] / product.Quantity;
+                                spinCountForRule += multiplier * giftRule.SpinCount;
+                            }
+                        }
+                    }
+
+                }
+                else if (giftRule.Type == 2) 
+                {
+                    double totalPrice = 0;
+                    var productIds = productInputs.Select(pi => pi.ProductId).Distinct().ToList();
+
+                    var selectedProducts = _context.Products.Where(p => productIds.Contains(p.Id)).ToList();
+                    var productDictionary = selectedProducts.ToDictionary(p => p.Id);
+
+                    foreach (var productInput in productInputs)
+                    {
+                        if (productDictionary.TryGetValue(productInput.ProductId, out var product))
+                        {
+                            totalPrice += productInput.Quantity * product.UnitPrice;
+                        }
+                    }
+                    if (totalPrice >= giftRule.MinAmount && totalPrice <= giftRule.MaxAmount)
+                    {
+                        spinCountForRule = giftRule.SpinCount;
+                    }
+                }
+
+                totalSpinCount += spinCountForRule;
             }
 
-            return Ok(products);
+            return totalSpinCount;
         }
 
-        [HttpPost("SpinCount")]
-        public IActionResult CalculateMaxSpinCount([FromBody] List<ProductInput> productInputs)
-        {
-            DateTime currentDate = DateTime.UtcNow;
-
-            var activeCampaign = _context.Campaigns
-                .Include(c => c.GiftRules)
-                    .ThenInclude(gr => gr.GiftConditions)
-                        .ThenInclude(gc => gc.GiftProducts).FirstOrDefault(c =>
-                c.StartDate <= currentDate &&
-                c.EndDate >= currentDate &&
-                c.Status == 1);
-
-            if (activeCampaign == null)
-            {
-                return BadRequest("No active campaign found.");
-            }
-
-            int maxSpinCount = GetCampaignSpinCount(activeCampaign, productInputs);
-
-            return Ok(new { SpinCount = maxSpinCount });
-        }
 
         [HttpPost("CreatePublicRewardOrder")]
         public async Task<ActionResult<RewardOrder>> CreatePublicRewardOrder([FromBody] RewardOrderPublicRequest request)
@@ -258,7 +317,7 @@ namespace PGAdmin.Controllers
                 return BadRequest("No active campaign found.");
             }
 
-            int spinCount = GetCampaignSpinCount(activeCampaign, request.Products);
+            int spinCount = GetCampaignSpinCount(activeCampaign, request.Products, activeCampaign.Scheme);
 
             // Validate access token and get ZaloID
             var verifier = new ThirdPartyTokenVerifier();
