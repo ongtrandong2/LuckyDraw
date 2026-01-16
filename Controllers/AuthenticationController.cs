@@ -28,46 +28,118 @@ namespace PGAdmin.Controllers
         [HttpPost("ThirdPartyLogin")]
         public async Task<IActionResult> ThirdPartyLogin([FromBody] ThirdPartyLoginRequest request)
         {
-            var verifier = new ThirdPartyTokenVerifier();
-            // Step 1: Verify the third-party token (implement this as per the third-party API)
-            var accessToken = Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
-            if (string.IsNullOrEmpty(accessToken))
+            try
             {
-                return Unauthorized("Access token is missing or invalid.");
-            }
+                var verifier = new ThirdPartyTokenVerifier();
+                var accessToken = Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
 
-            var userInfo = await verifier.GetThirdPartyTokenInfoAsync(accessToken);
-            if (userInfo == null)
-            {
-                return Unauthorized("Invalid third-party token.");
-            }
+                if (string.IsNullOrEmpty(accessToken))
+                {
+                    _logger.LogWarning("Access token is missing");
+                    return Unauthorized(new
+                    {
+                        Success = false,
+                        Message = "Access token is missing or invalid."
+                    });
+                }
 
-            var phoneNumber = await GetPhoneFromZaloAsync(accessToken, request.PhoneNumber);
+                _logger.LogInformation("Verifying Zalo token");
 
-            // Step 2: Check if the user exists in the database using the phone number
-            var pg = await _context.PG.FirstOrDefaultAsync(p => p.Phone == phoneNumber);
+                var userInfo = await verifier.GetThirdPartyTokenInfoAsync(accessToken);
 
-            // Step 3: If the user does not exist, create a new user
-            if (pg == null)
-            {
+                // Kiểm tra kỹ userInfo
+                if (userInfo == null)
+                {
+                    _logger.LogError("GetThirdPartyTokenInfoAsync returned null");
+                    return Unauthorized(new
+                    {
+                        Success = false,
+                        Message = "Failed to verify Zalo token",
+                        ErrorCode = "TOKEN_VERIFICATION_FAILED"
+                    });
+                }
+
+                _logger.LogInformation($"Zalo API Response - Error: {userInfo.Error}, Message: {userInfo.Message}");
+
+                // Kiểm tra error từ Zalo
+                if (userInfo.Error != 0)
+                {
+                    _logger.LogError($"Zalo API Error: {userInfo.Error} - {userInfo.Message}");
+                    return Unauthorized(new
+                    {
+                        Success = false,
+                        Message = userInfo.Message ?? "Zalo authentication failed",
+                        ErrorCode = userInfo.Error
+                    });
+                }
+
+                // Kiểm tra Id trước khi dùng
+                if (string.IsNullOrEmpty(userInfo.Id))
+                {
+                    _logger.LogError("Zalo returned empty or null user ID");
+                    return Unauthorized(new
+                    {
+                        Success = false,
+                        Message = "Could not retrieve user ID from Zalo",
+                        ErrorCode = "EMPTY_USER_ID"
+                    });
+                }
+
+                _logger.LogInformation($"Zalo user verified - ID: {userInfo.Id}, Name: {userInfo.Name}");
+
+                // TÌM USER BẰNG ZALO ID (không dùng phone nữa)
+                var pg = await _context.PG.FirstOrDefaultAsync(p => p.ZaloId == userInfo.Id);
+
+                if (pg != null)
+                {
+                    _logger.LogInformation($"Existing user found - ID: {pg.Id}");
+                    return Ok(new
+                    {
+                        Success = true,
+                        Result = new
+                        {
+                            ID = pg.Id,
+                            Phone = pg.Phone,
+                            Name = pg.FirstName,
+                            ZaloId = pg.ZaloId,
+                            Status = pg.Status
+                        }
+                    });
+                }
+
+                // TẠO USER MỚI - Tạo phone number từ ZaloId
+                _logger.LogInformation("Creating new user");
+
+                var phoneNumber = "09" + userInfo.Id.Substring(Math.Max(0, userInfo.Id.Length - 8)).PadLeft(8, '0');
+
+                // Đảm bảo phone unique
+                var existingPhone = await _context.PG.AnyAsync(p => p.Phone == phoneNumber);
+                if (existingPhone)
+                {
+                    // Nếu phone bị trùng, thêm timestamp
+                    phoneNumber = "09" + DateTime.UtcNow.Ticks.ToString().Substring(0, 8);
+                }
+
                 var pgNew = new PG
                 {
-                    FirstName = userInfo.Name,    // Assuming the 'Name' field is full name, you can split it as needed
-                    LastName = "",                // If no last name field is available, leave it empty or split it from the Name field
+                    FirstName = userInfo.Name ?? "Zalo User",
+                    LastName = "",
                     Phone = phoneNumber,
                     DateOfBirth = DateTime.TryParse(userInfo.Birthday, out var dob)
                           ? DateTime.SpecifyKind(dob, DateTimeKind.Utc)
-                          : (DateTime?)null,  // Parse birthday if valid
-                    Gender = "Male",  // Assuming "IsSensitive" maps to gender or some custom logic
-                    Status = 0, // Set status accordingly, or adjust based on business rules
+                          : (DateTime?)null,
+                    Gender = "Male",
+                    Status = 0,
                     ZaloId = userInfo.Id,
-                    AvatarUrl = userInfo.Picture.Data.Url,
+                    AvatarUrl = userInfo.Picture?.Data?.Url ?? "",
                     QrCode = userInfo.Id,
                 };
 
                 _context.PG.Add(pgNew);
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("PG created successfully.");
+
+                _logger.LogInformation($"New user created - ID: {pgNew.Id}, Phone: {pgNew.Phone}");
+
                 return Ok(new
                 {
                     Success = true,
@@ -77,27 +149,35 @@ namespace PGAdmin.Controllers
                         Phone = pgNew.Phone,
                         Name = pgNew.FirstName,
                         ZaloId = pgNew.ZaloId,
-                        pgNew.Status
+                        Status = pgNew.Status
                     }
                 });
             }
-
-            return Ok(new
+            catch (DbUpdateException dbEx)
             {
-                Success = true,
-                Result = new
+                _logger.LogError(dbEx, "Database error");
+                var innerMsg = dbEx.InnerException?.Message ?? dbEx.Message;
+                _logger.LogError($"Inner exception: {innerMsg}");
+
+                return StatusCode(500, new
                 {
-                    ID = pg.Id,
-                    pg.Phone,
-                    Name = pg.FirstName,
-                    pg.ZaloId,
-                    pg.Status
-                }
-            });
+                    Success = false,
+                    Message = "Database error",
+                    Detail = innerMsg
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in ThirdPartyLogin");
+                _logger.LogError($"Stack trace: {ex.StackTrace}");
 
-            // Step 4: Return an authentication token for the user
-            //var token = await _tokenService.GenerateJwtTokenAsync(user);
-
+                return StatusCode(500, new
+                {
+                    Success = false,
+                    Message = "Internal server error",
+                    Detail = ex.Message
+                });
+            }
         }
 
         [HttpPost("UserInfo")]
