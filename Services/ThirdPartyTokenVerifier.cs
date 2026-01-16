@@ -7,7 +7,7 @@ namespace PGAdmin.Services
 {
     public class ThirdPartyTokenVerifier
     {
-        private const string ZaloAppSecretKey = "P8RIXgwHs3Gh7M9j8J4S";
+        private const string ZaloAppSecretKey = "MlqujsueSzgq11WDSS3X";
         //private const string ZaloAppSecretKey = "URdCs3jo3dfZO7TPXOWv";
         private const string ZaloApiUrl = "https://graph.zalo.me/v2.0/me";
 
