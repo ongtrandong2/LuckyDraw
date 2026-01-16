@@ -28,96 +28,76 @@ namespace PGAdmin.Controllers
         [HttpPost("ThirdPartyLogin")]
         public async Task<IActionResult> ThirdPartyLogin([FromBody] ThirdPartyLoginRequest request)
         {
-            try
+            var verifier = new ThirdPartyTokenVerifier();
+            // Step 1: Verify the third-party token (implement this as per the third-party API)
+            var accessToken = Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+            if (string.IsNullOrEmpty(accessToken))
             {
-                var verifier = new ThirdPartyTokenVerifier();
-                var accessToken = Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+                return Unauthorized("Access token is missing or invalid.");
+            }
 
-                if (string.IsNullOrEmpty(accessToken))
+            var userInfo = await verifier.GetThirdPartyTokenInfoAsync(accessToken);
+            if (userInfo == null)
+            {
+                return Unauthorized("Invalid third-party token.");
+            }
+
+            var phoneNumber = await GetPhoneFromZaloAsync(accessToken, request.PhoneNumber);
+
+            // Step 2: Check if the user exists in the database using the phone number
+            var pg = await _context.PG.FirstOrDefaultAsync(p => p.Phone == phoneNumber);
+
+            // Step 3: If the user does not exist, create a new user
+            if (pg == null)
+            {
+                var pgNew = new PG
                 {
-                    _logger.LogWarning("Access token is missing");
-                    return Unauthorized("Access token is missing or invalid.");
-                }
+                    FirstName = userInfo.Name,    // Assuming the 'Name' field is full name, you can split it as needed
+                    LastName = "",                // If no last name field is available, leave it empty or split it from the Name field
+                    Phone = phoneNumber,
+                    DateOfBirth = DateTime.TryParse(userInfo.Birthday, out var dob)
+                          ? DateTime.SpecifyKind(dob, DateTimeKind.Utc)
+                          : (DateTime?)null,  // Parse birthday if valid
+                    Gender = "Male",  // Assuming "IsSensitive" maps to gender or some custom logic
+                    Status = 0, // Set status accordingly, or adjust based on business rules
+                    ZaloId = userInfo.Id,
+                    AvatarUrl = userInfo.Picture.Data.Url,
+                    QrCode = userInfo.Id,
+                };
 
-                // Log để debug
-                _logger.LogInformation($"Attempting to verify token and get user info");
-
-                var userInfo = await verifier.GetThirdPartyTokenInfoAsync(accessToken);
-                if (userInfo == null)
-                {
-                    _logger.LogWarning("Failed to get user info from token");
-                    return Unauthorized("Invalid third-party token.");
-                }
-
-                _logger.LogInformation($"Getting phone number with code length: {request.PhoneNumber?.Length}");
-                var phoneNumber = await GetPhoneFromZaloAsync(accessToken, request.PhoneNumber);
-
-                if (string.IsNullOrEmpty(phoneNumber))
-                {
-                    _logger.LogError("Failed to get phone number from Zalo");
-                    return BadRequest("Failed to retrieve phone number");
-                }
-
-                var pg = await _context.PG.FirstOrDefaultAsync(p => p.Phone == phoneNumber);
-
-                if (pg == null)
-                {
-                    var pgNew = new PG
-                    {
-                        FirstName = userInfo.Name,
-                        LastName = "",
-                        Phone = phoneNumber,
-                        DateOfBirth = DateTime.TryParse(userInfo.Birthday, out var dob)
-                              ? DateTime.SpecifyKind(dob, DateTimeKind.Utc)
-                              : (DateTime?)null,
-                        Gender = "Male",
-                        Status = 0,
-                        ZaloId = userInfo.Id,
-                        AvatarUrl = userInfo.Picture?.Data?.Url ?? "", // Fix NullReference
-                        QrCode = userInfo.Id,
-                    };
-
-                    _context.PG.Add(pgNew);
-                    await _context.SaveChangesAsync();
-                    _logger.LogInformation($"PG created successfully with phone: {phoneNumber}");
-
-                    return Ok(new
-                    {
-                        Success = true,
-                        Result = new
-                        {
-                            ID = pgNew.Id,
-                            Phone = pgNew.Phone,
-                            Name = pgNew.FirstName,
-                            ZaloId = pgNew.ZaloId,
-                            pgNew.Status
-                        }
-                    });
-                }
-
+                _context.PG.Add(pgNew);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("PG created successfully.");
                 return Ok(new
                 {
                     Success = true,
                     Result = new
                     {
-                        ID = pg.Id,
-                        pg.Phone,
-                        Name = pg.FirstName,
-                        pg.ZaloId,
-                        pg.Status
+                        ID = pgNew.Id,
+                        Phone = pgNew.Phone,
+                        Name = pgNew.FirstName,
+                        ZaloId = pgNew.ZaloId,
+                        pgNew.Status
                     }
                 });
             }
-            catch (Exception ex)
+
+            return Ok(new
             {
-                _logger.LogError(ex, "Error in ThirdPartyLogin");
-                return StatusCode(500, new
+                Success = true,
+                Result = new
                 {
-                    Success = false,
-                    Message = "Internal server error",
-                    Detail = ex.Message // Remove this in production
-                });
-            }
+                    ID = pg.Id,
+                    pg.Phone,
+                    Name = pg.FirstName,
+                    pg.ZaloId,
+                    pg.Status
+                }
+            });
+
+            // Step 4: Return an authentication token for the user
+            //var token = await _tokenService.GenerateJwtTokenAsync(user);
+
         }
 
         [HttpPost("UserInfo")]
@@ -139,7 +119,7 @@ namespace PGAdmin.Controllers
             }
             // Step 2: Check if the user exists in the database using the phone number
             var user = await _context.PG.FirstOrDefaultAsync(m => m.ZaloId == ZaloId);
-            
+
             return Ok(new { Success = user != null });
         }
 
